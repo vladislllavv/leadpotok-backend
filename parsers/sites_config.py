@@ -1,36 +1,29 @@
 SITES_TO_PARSE = [
-    # Простые сайты (HTTPX)
+    # Сайты с публичными заявками/контактами
     {
-        'name': 'Logist.ru - Новости',
-        'url': 'https://logist.ru/news',
-        'terms': ['китай', 'импорт', 'доставка'],
-        'enabled': True,
-        'parser': 'httpx'  # Простой парсер
+        'name': 'Logist.ru - Контакты компаний',
+        'url': 'https://logist.ru/companies',  # ← Проверь актуальный URL
+        'parser': 'company',
+        'enabled': True
     },
     {
-        'name': 'Ved.gov.ru - Новости',
-        'url': 'https://ved.gov.ru/',
-        'terms': ['китай', 'импорт', 'вэд'],
-        'enabled': True,
-        'parser': 'httpx'
+        'name': 'Trans.ru - Партнёры',
+        'url': 'https://trans.ru/partners',
+        'parser': 'company',
+        'enabled': True
     },
-    
-    # Сайты с Selenium
-    {
-        'name': 'Avito.ru - Доставка из Китая',
-        'url': 'https://www.avito.ru/all?q=доставка+из+китая',
-        'terms': ['китай', 'карго', 'доставка'],
-        'enabled': True,
-        'parser': 'selenium'  # Требуется Selenium!
-    },
-    {
-        'name': 'HH.ru - Логистические компании',
-        'url': 'https://hh.ru/search/vacancy?text=логист+китай+вэд',
-        'terms': ['логист', 'вэд', 'импорт', 'китай'],
-        'enabled': True,
-        'parser': 'selenium'
-    }
+    # Добавляй сюда сайты, где есть каталоги компаний
+]
+
+# Список компаний для прямого парсинга (ручное добавление)
+COMPANY_URLS = [
+    'https://example-logistics.ru',
+    'https://cargo-company.ru',
+    # Добавляй найденные сайты логистических компаний
 ]
 
 def get_active_sites():
     return [site for site in SITES_TO_PARSE if site.get('enabled', False)]
+
+def get_company_urls():
+    return COMPANY_URLS
