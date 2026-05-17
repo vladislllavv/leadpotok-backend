@@ -48,7 +48,7 @@ def get_leads(cargo_type: str = None, city: str = None):
     conn.close()
     return [dict(row) for row in rows]
 
-def def add_lead(company: str, contact: str, phone: str, city: str, 
+def add_lead(company: str, contact: str, phone: str, city: str, 
              cargo_type: str, volume: str, source: str, reason: str, 
              hot_level: str = 'warm', created_at: str = None):
     """Добавляет новый лид в базу (created_at игнорируется, ставится автоматически)"""
