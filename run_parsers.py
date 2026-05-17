@@ -23,9 +23,13 @@ async def main():
     
     all_leads = await parser.parse_multiple(sites)
     
-    saved = 0
+        saved = 0
+    skipped = 0
     for lead in all_leads:
         try:
+            if is_duplicate(lead['phone'], lead['company']):
+                skipped += 1
+                continue
             add_lead(**lead)
             saved += 1
             print(f"✅ {lead['company'][:50]}...")
@@ -33,7 +37,7 @@ async def main():
             print(f"❌ Ошибка сохранения: {e}")
     
     print("=" * 50)
-    print(f"✨ Готово! Добавлено {saved} лидов в leads.db")
+    print(f"✨ Готово! Добавлено: {saved} | Пропущено дублей: {skipped}")
 
 if __name__ == "__main__":
     asyncio.run(main())

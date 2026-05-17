@@ -49,9 +49,8 @@ def get_leads(cargo_type: str = None, city: str = None):
     return [dict(row) for row in rows]
 
 def add_lead(company: str, contact: str, phone: str, city: str, 
-             cargo_type: str, volume: str, source: str, reason: str, 
-             hot_level: str = 'warm', created_at: str = None):
-    """Добавляет новый лид в базу (created_at игнорируется, ставится автоматически)"""
+             cargo_type: str, volume: str, source: str, reason: str, hot_level: str = 'warm'):
+    """Добавляет новый лид в базу"""
     conn = get_db()
     conn.execute("""
         INSERT INTO leads (company, contact, phone, city, cargo_type, volume, source, reason, hot_level)
@@ -59,14 +58,3 @@ def add_lead(company: str, contact: str, phone: str, city: str,
     """, (company, contact, phone, city, cargo_type, volume, source, reason, hot_level))
     conn.commit()
     conn.close()
-def is_duplicate(phone: str, company: str) -> bool:
-    """Проверяет, есть ли уже такой лид в базе"""
-    conn = get_db()
-    # Ищем по телефону ИЛИ по названию компании (очищенному от пробелов)
-    clean_company = company.replace(' ', '').lower()[:50]
-    row = conn.execute(
-        "SELECT id FROM leads WHERE phone = ? OR LOWER(REPLACE(company, ' ', '')) LIKE ?",
-        (phone, f"%{clean_company}%")
-    ).fetchone()
-    conn.close()
-    return row is not None

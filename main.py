@@ -36,3 +36,21 @@ async def get_leads_api(request: LeadRequest):
 @app.get("/health")
 def health():
     return {"status": "running"}
+import os
+from fastapi import Header, HTTPException
+
+# Простой ключ для защиты (смени на случайную строку!)
+PARSE_API_KEY = os.getenv("PARSE_API_KEY", "change-me-to-random-string-123")
+
+@app.post("/api/parse")
+async def trigger_parse(x_api_key: str = Header(None)):
+    """Запускает парсинг только при правильном ключе"""
+    if x_api_key != PARSE_API_KEY:
+        raise HTTPException(status_code=403, detail="Неверный ключ доступа")
+    
+    # Запускаем в фоне, чтобы не блокировать ответ
+    import asyncio
+    from run_parsers import main as run_parser_main
+    asyncio.create_task(run_parser_main())
+    
+    return {"status": "started", "message": "Парсинг запущен в фоне. Проверь базу через 2-3 минуты."}
