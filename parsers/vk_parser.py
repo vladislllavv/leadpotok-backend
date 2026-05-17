@@ -1,4 +1,4 @@
- import httpx
+import httpx
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
