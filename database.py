@@ -48,9 +48,10 @@ def get_leads(cargo_type: str = None, city: str = None):
     conn.close()
     return [dict(row) for row in rows]
 
-def add_lead(company: str, contact: str, phone: str, city: str, 
-             cargo_type: str, volume: str, source: str, reason: str, hot_level: str = 'warm'):
-    """Добавляет новый лид в базу"""
+def def add_lead(company: str, contact: str, phone: str, city: str, 
+             cargo_type: str, volume: str, source: str, reason: str, 
+             hot_level: str = 'warm', created_at: str = None):
+    """Добавляет новый лид в базу (created_at игнорируется, ставится автоматически)"""
     conn = get_db()
     conn.execute("""
         INSERT INTO leads (company, contact, phone, city, cargo_type, volume, source, reason, hot_level)
