@@ -1,72 +1,84 @@
-import sqlite3
 import os
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, func
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
 load_dotenv()
-DB_PATH = os.getenv("DATABASE_FILE", "leads.db")
+
+# Выбираем базу: PostgreSQL для облака, SQLite для локалки
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    engine = create_engine(DATABASE_URL)
+else:
+    engine = create_engine("sqlite:///leads.db", connect_args={"check_same_thread": False})
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Lead(Base):
+    __tablename__ = "leads"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    company = Column(String(255), index=True)
+    contact = Column(String(255))
+    phone = Column(String(50))
+    city = Column(String(100))
+    cargo_type = Column(String(100))
+    volume = Column(String(100))
+    source = Column(String(255))
+    reason = Column(Text)
+    hot_level = Column(String(20), default='warm')
+    created_at = Column(DateTime, default=func.now())
+
+# Создаём таблицы
+Base.metadata.create_all(bind=engine)
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-def init_db():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company TEXT, contact TEXT, phone TEXT, city TEXT,
-            cargo_type TEXT, volume TEXT, source TEXT, reason TEXT,
-            hot_level TEXT DEFAULT 'warm',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    if conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0] == 0:
-        conn.executemany("""
-            INSERT INTO leads (company, contact, phone, city, cargo_type, volume, source, reason, hot_level)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [
-            ("ООО 'Восток-Текстиль'", "Анна, закупщик", "+74952345678", "Москва", "одежда_текстиль", "3-5 т/мес", "hh.ru", "Ищут логиста для регулярных поставок из Гуанчжоу", "hot"),
-            ("ИП Чжан Вэй", "Вячеслав, владелец", "+79268881234", "Москва", "электроника", "1-3 т/мес", "Авито", "Ищет доставку с 1688 на следующую неделю", "hot"),
-            ("ТД 'СтанкоИмпорт-Юг'", "Дмитрий, директор", "+78615559012", "Краснодар", "оборудование", "10-20 т/мес", "2ГИС", "Возят станки из Китая, логист на аутсорсе", "warm"),
-            ("ООО 'АвтоДеталь-Сибирь'", "Елена, отдел ВЭД", "+73831112233", "Новосибирск", "автозапчасти", "5-10 т/мес", "Telegram", "Текущий логист срывает сроки. Нужна замена", "hot")
-        ])
-        conn.commit()
-    conn.close()
+def add_lead(db, company: str, contact: str = '', phone: str = '', city: str = '', 
+             cargo_type: str = 'любые', volume: str = '', source: str = '', 
+             reason: str = '', hot_level: str = 'warm'):
+    """Добавляет лид в базу"""
+    lead = Lead(
+        company=company, contact=contact, phone=phone, city=city,
+        cargo_type=cargo_type, volume=volume, source=source,
+        reason=reason, hot_level=hot_level
+    )
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    return lead
 
-def get_leads(cargo_type: str = None, city: str = None):
-    conn = get_db()
-    query = "SELECT * FROM leads WHERE 1=1 ORDER BY hot_level DESC, created_at DESC"
-    params = []
-    if cargo_type and cargo_type != "любые":
-        query += " AND cargo_type = ?"
-        params.append(cargo_type)
-    if city:
-        query += " AND city LIKE ?"
-        params.append(f"%{city}%")
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
-
-def add_lead(company: str, contact: str, phone: str, city: str, 
-             cargo_type: str, volume: str, source: str, reason: str, 
-             hot_level: str = 'warm', created_at: str = None):
-    """Добавляет новый лид в базу (created_at игнорируется, ставится автоматически)"""
-    conn = get_db()
-    conn.execute("""
-        INSERT INTO leads (company, contact, phone, city, cargo_type, volume, source, reason, hot_level)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (company, contact, phone, city, cargo_type, volume, source, reason, hot_level))
-    conn.commit()
-    conn.close()
-
-def is_duplicate(phone: str, company: str) -> bool:
-    """Проверяет, есть ли уже такой лид в базе"""
-    conn = get_db()
+def is_duplicate(db, phone: str, company: str) -> bool:
+    """Проверяет дубликаты"""
     clean_company = company.replace(' ', '').lower()[:50]
-    row = conn.execute(
-        "SELECT id FROM leads WHERE phone = ? OR LOWER(REPLACE(company, ' ', '')) LIKE ?",
-        (phone, f"%{clean_company}%")
-    ).fetchone()
-    conn.close()
-    return row is not None
+    exists = db.query(Lead).filter(
+        (Lead.phone == phone) | 
+        (func.lower(func.replace(Lead.company, ' ', '')).like(f"%{clean_company}%"))
+    ).first()
+    return exists is not None
+
+def get_leads(db, cargo_type: str = None, city: str = None, limit: int = 100):
+    """Получает лиды с фильтрами"""
+    query = db.query(Lead)
+    if cargo_type and cargo_type != "любые":
+        query = query.filter(Lead.cargo_type == cargo_type)
+    if city:
+        query = query.filter(Lead.city.ilike(f"%{city}%"))
+    return query.order_by(Lead.hot_level.desc(), Lead.created_at.desc()).limit(limit).all()
+
+def get_stats(db):
+    """Статистика для админки"""
+    total = db.query(Lead).count()
+    hot = db.query(Lead).filter(Lead.hot_level == 'hot').count()
+    today = db.query(Lead).filter(
+        func.date(Lead.created_at) == func.date('now')
+    ).count()
+    return {"total": total, "hot": hot, "today": today}
