@@ -16,34 +16,14 @@
             --success: #4cd964;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; padding-bottom: 90px; line-height: 1.5; position: relative; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; padding-bottom: 120px; line-height: 1.5; }
         .screen { display: none; animation: fadeIn 0.3s; }
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .header { text-align: center; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid var(--secondary-bg); position: relative; }
+        .header { text-align: center; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid var(--secondary-bg); }
         .logo { font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .subtitle { color: var(--hint); font-size: 13px; margin-top: 4px; }
-        
-        /* Кнопка админки */
-        .btn-admin-gear {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--secondary-bg);
-            border: none;
-            border-radius: 8px;
-            width: 40px;
-            height: 40px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-        }
-        .btn-admin-gear:hover { background: var(--button); color: var(--button-text); transform: rotate(30deg); }
-        .btn-admin-gear:active { transform: scale(0.9) rotate(30deg); }
         
         .form-group { margin-bottom: 16px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
@@ -55,6 +35,28 @@
         .btn-outline { background: transparent; border: 2px solid var(--button); color: var(--button); }
         .btn-success { background: var(--success); color: #fff; }
         .btn-reset { background: transparent; color: var(--hint); font-size: 14px; margin-top: 10px; }
+        
+        /* Кнопка админки внизу */
+        .btn-admin-fixed {
+            position: fixed;
+            bottom: 100px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--button);
+            color: var(--button-text);
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+        .btn-admin-fixed:active { transform: scale(0.9); }
         
         .lead-card { background: var(--secondary-bg); border-radius: 12px; padding: 14px; margin-bottom: 12px; border-left: 4px solid var(--success); }
         .lead-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
@@ -71,17 +73,18 @@
         .filters-summary { background: var(--secondary-bg); padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; }
         .counter { text-align: center; font-size: 24px; font-weight: 700; margin: 10px 0; color: var(--button); }
         
-        /* Стили админки */
         .admin-header { background: #fff0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ffcccc; }
     </style>
 </head>
 <body>
 
+    <!-- КНОПКА АДМИНКИ (плавающая) -->
+    <button id="btn-admin-float" class="btn-admin-fixed" title="Админка">⚙️</button>
+
     <!-- ЭКРАН 1: Форма поиска -->
     <div id="screen-search" class="screen active">
         <div class="header">
-            <button id="btn-admin-toggle" class="btn-admin-gear" title="Админка">⚙️</button>
-            <div class="logo">🇨→🇷🇺 ЛидПоток: Китай</div>
+            <div class="logo">🇨🇳→🇷🇺 ЛидПоток: Китай</div>
             <div class="subtitle">Находи импортёров, которым нужна доставка</div>
         </div>
         
@@ -121,7 +124,6 @@
     <!-- ЭКРАН 2: База лидов -->
     <div id="screen-leads" class="screen">
         <div class="header">
-            <button id="btn-admin-toggle-2" class="btn-admin-gear" title="Админка">⚙️</button>
             <div class="logo">🔥 Горячие лиды</div>
             <div class="subtitle" id="leads-date">Сгенерировано: <span id="current-time"></span></div>
         </div>
@@ -180,22 +182,18 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        const API_BASE = 'https://leadpotok-api.onrender.com'; // Твоя ссылка
+        const API_BASE = 'https://leadpotok-api.onrender.com';
         let currentLeads = [];
         let ADMIN_KEY = localStorage.getItem('admin_key') || '';
 
-        // --- ЛОГИКА АДМИНКИ ---
-        function openAdminScreen() {
+        // --- КНОПКА АДМИНКИ ---
+        document.getElementById('btn-admin-float').addEventListener('click', () => {
             showScreen('admin');
             if (ADMIN_KEY) {
                 document.getElementById('admin-key-input').value = ADMIN_KEY;
                 loadAdminData();
             }
-        }
-
-        // Кнопки админки (на обоих экранах)
-        document.getElementById('btn-admin-toggle').addEventListener('click', openAdminScreen);
-        document.getElementById('btn-admin-toggle-2').addEventListener('click', openAdminScreen);
+        });
 
         // Вход в админку
         document.getElementById('btn-admin-login').addEventListener('click', async () => {
@@ -244,19 +242,16 @@
         // Загрузка данных админки
         async function loadAdminData() {
             try {
-                // Статистика
                 const statsRes = await fetch(`${API_BASE}/api/admin/stats`, { headers: { 'x-admin-key': ADMIN_KEY } });
                 const stats = await statsRes.json();
                 document.getElementById('admin-stats').innerHTML = `📊 Всего: <b>${stats.total}</b> | 🔥 Горячих: <b>${stats.hot}</b> | 🆕 Сегодня: <b>${stats.today}</b>`;
                 
-                // Список
                 const leadsRes = await fetch(`${API_BASE}/api/admin/leads?limit=10`, { headers: { 'x-admin-key': ADMIN_KEY } });
                 const data = await leadsRes.json();
                 document.getElementById('admin-leads-list').innerHTML = data.leads.map(l => `
                     <div class="lead-card">
                         <div class="lead-title">${l.company}</div>
                         <div class="lead-info">📞 ${l.phone || '—'} | 📍 ${l.city || '—'}</div>
-                        <div class="lead-info">🔗 ${l.source.replace('rusprofile:','').substring(0,40)}...</div>
                         <span class="lead-hot">${l.hot_level === 'hot' ? '🔥 Горячий' : '🌡️ Тёплый'}</span>
                     </div>
                 `).join('');
