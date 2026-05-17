@@ -16,129 +16,43 @@
             --success: #4cd964;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 16px;
-            padding-bottom: 90px;
-            line-height: 1.5;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; padding-bottom: 90px; line-height: 1.5; }
         .screen { display: none; animation: fadeIn 0.3s; }
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .header {
-            text-align: center;
-            padding: 15px 0;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--secondary-bg);
-        }
-        .logo { font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .header { text-align: center; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid var(--secondary-bg); }
+        .logo { font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; user-select: none; }
         .subtitle { color: var(--hint); font-size: 13px; margin-top: 4px; }
         
         .form-group { margin-bottom: 16px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--secondary-bg);
-            border-radius: 10px;
-            background: var(--secondary-bg);
-            color: var(--text);
-            font-size: 16px;
-            outline: none;
-        }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--secondary-bg); border-radius: 10px; background: var(--secondary-bg); color: var(--text); font-size: 16px; outline: none; }
         input:focus, select:focus { border-color: var(--button); }
         
-        .btn {
-            width: 100%;
-            padding: 14px;
-            background: var(--button);
-            color: var(--button-text);
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
+        .btn { width: 100%; padding: 14px; background: var(--button); color: var(--button-text); border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn:active { opacity: 0.9; }
         .btn-outline { background: transparent; border: 2px solid var(--button); color: var(--button); }
         .btn-success { background: var(--success); color: #fff; }
         .btn-reset { background: transparent; color: var(--hint); font-size: 14px; margin-top: 10px; }
         
-        .lead-card {
-            background: var(--secondary-bg);
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 12px;
-            border-left: 4px solid var(--success);
-        }
+        .lead-card { background: var(--secondary-bg); border-radius: 12px; padding: 14px; margin-bottom: 12px; border-left: 4px solid var(--success); }
         .lead-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
-        .lead-hot { 
-            display: inline-block; 
-            background: rgba(76, 217, 100, 0.15); 
-            color: var(--success); 
-            padding: 2px 8px; 
-            border-radius: 6px; 
-            font-size: 11px; 
-            font-weight: 600; 
-            margin-bottom: 8px; 
-        }
+        .lead-hot { display: inline-block; background: rgba(76, 217, 100, 0.15); color: var(--success); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
         .lead-info { font-size: 13px; color: var(--hint); margin: 4px 0; }
-        .lead-phone { 
-            color: var(--button); 
-            font-weight: 600; 
-            text-decoration: none; 
-            display: block; 
-            margin: 8px 0; 
-            font-size: 15px;
-        }
-        .lead-reason { 
-            font-size: 13px; 
-            margin-top: 10px; 
-            padding-top: 10px; 
-            border-top: 1px dashed var(--hint);
-            background: rgba(51,144,236,0.08);
-            padding: 8px 10px;
-            border-radius: 6px;
-        }
+        .lead-phone { color: var(--button); font-weight: 600; text-decoration: none; display: block; margin: 8px 0; font-size: 15px; }
+        .lead-reason { font-size: 13px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--hint); background: rgba(51,144,236,0.08); padding: 8px 10px; border-radius: 6px; }
         
-        .toolbar {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            background: var(--bg);
-            border-top: 1px solid var(--secondary-bg);
-            padding: 10px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            z-index: 100;
-        }
+        .toolbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-top: 1px solid var(--secondary-bg); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
         .toolbar .btn { margin: 0; font-size: 14px; padding: 12px; }
         
         .empty-state { text-align: center; padding: 40px 20px; color: var(--hint); }
         .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .filters-summary { background: var(--secondary-bg); padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; }
+        .counter { text-align: center; font-size: 24px; font-weight: 700; margin: 10px 0; color: var(--button); }
         
-        .filters-summary {
-            background: var(--secondary-bg);
-            padding: 10px 14px;
-            border-radius: 10px;
-            margin-bottom: 16px;
-            font-size: 13px;
-        }
-        .counter {
-            text-align: center;
-            font-size: 24px;
-            font-weight: 700;
-            margin: 10px 0;
-            color: var(--button);
-        }
+        /* Стили админки */
+        .admin-header { background: #fff0f0; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ffcccc; }
     </style>
 </head>
 <body>
@@ -146,7 +60,7 @@
     <!-- ЭКРАН 1: Форма поиска -->
     <div id="screen-search" class="screen active">
         <div class="header">
-            <div class="logo">🇨🇳→🇷🇺 ЛидПоток: Китай</div>
+            <div class="logo" id="main-logo">🇨🇳→🇷🇺 ЛидПоток: Китай</div>
             <div class="subtitle">Находи импортёров, которым нужна доставка</div>
         </div>
         
@@ -170,7 +84,7 @@
         </div>
         
         <div class="form-group">
-            <label>📊 Минимальный объём (тонн)</label>
+            <label> Минимальный объём (тонн)</label>
             <select id="min_volume">
                 <option value="0">Любой (от 1 кг)</option>
                 <option value="1">От 1 тонны</option>
@@ -201,6 +115,40 @@
         </div>
     </div>
 
+    <!-- ЭКРАН 3: АДМИНКА (Скрыта) -->
+    <div id="screen-admin" class="screen">
+        <div class="header">
+            <div class="logo">⚙️ Админ-панель</div>
+            <div class="subtitle">Управление облачным парсингом</div>
+        </div>
+        
+        <div class="admin-header">
+            <div class="form-group" style="margin-bottom:8px">
+                <label>🔑 Админ-ключ</label>
+                <input type="password" id="admin-key-input" placeholder="Введи ключ из Render">
+            </div>
+            <button class="btn btn-outline" id="btn-admin-login" style="margin:0; padding:8px">Войти</button>
+        </div>
+
+        <div id="admin-controls" style="display:none">
+            <div class="counter" id="admin-stats">Загрузка статистики...</div>
+            
+            <div class="form-group">
+                <label>🔍 Запрос для Rusprofile</label>
+                <input type="text" id="rp-query" value="Импорт" placeholder="Например: ВЭД, Китай">
+            </div>
+            
+            <button class="btn" id="btn-parse">🚀 Запустить парсинг</button>
+            <button class="btn btn-outline" id="btn-refresh-admin">🔄 Обновить список</button>
+            <button class="btn btn-success" id="btn-export">📥 Скачать Excel</button>
+            
+            <div style="margin-top:20px">
+                <label>Последние добавленные компании:</label>
+                <div id="admin-leads-list"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Панель действий -->
     <div class="toolbar" id="main-toolbar" style="display:none">
         <button class="btn btn-success" id="btn-download">📥 Скачать базу в Excel</button>
@@ -210,170 +158,144 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.enableClosingConfirmation();
-
-        const user = tg.initDataUnsafe.user || {};
-        const userId = user.id || 'unknown';
-        const userName = user.first_name || 'Логист';
+        const API_BASE = 'https://leadpotok-api.onrender.com'; // Твоя ссылка
         let currentLeads = [];
+        let ADMIN_KEY = localStorage.getItem('admin_key') || '';
 
-        // 🔗 ТВОЯ ССЫЛКА НА RENDER API:
-        const API_URL = 'https://leadpotok-api.onrender.com/api/leads';
+        // --- ЛОГИКА АДМИНКИ ---
+        // Долгое нажатие на логотип открывает админку
+        let pressTimer;
+        const logo = document.getElementById('main-logo');
+        
+        logo.addEventListener('touchstart', (e) => {
+            pressTimer = setTimeout(() => {
+                showScreen('admin');
+                document.getElementById('admin-key-input').value = ADMIN_KEY;
+            }, 800);
+        });
+        logo.addEventListener('touchend', () => clearTimeout(pressTimer));
+        logo.addEventListener('click', () => clearTimeout(pressTimer)); // Для десктопа
 
-        // Переключение экранов
+        // Вход в админку
+        document.getElementById('btn-admin-login').addEventListener('click', async () => {
+            const key = document.getElementById('admin-key-input').value;
+            if(!key) return tg.showAlert('Введи ключ!');
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: { 'x-admin-key': key } });
+                if(!res.ok) throw new Error('Неверный ключ');
+                
+                ADMIN_KEY = key;
+                localStorage.setItem('admin_key', key);
+                document.getElementById('admin-controls').style.display = 'block';
+                document.querySelector('.admin-header').style.display = 'none';
+                loadAdminData();
+            } catch(e) {
+                tg.showAlert('❌ Ошибка: ' + e.message);
+            }
+        });
+
+        // Запуск парсинга
+        document.getElementById('btn-parse').addEventListener('click', async () => {
+            const query = document.getElementById('rp-query').value;
+            const btn = document.getElementById('btn-parse');
+            btn.disabled = true; btn.textContent = '⏳ Запуск...';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/parse/rusprofile?query=${encodeURIComponent(query)}`, {
+                    method: 'POST', headers: { 'x-admin-key': ADMIN_KEY }
+                });
+                if(!res.ok) throw new Error('Ошибка');
+                tg.showAlert('✅ Парсинг запущен! Жди 1-2 минуты');
+                setTimeout(loadAdminData, 30000);
+            } catch(e) {
+                tg.showAlert('❌ Ошибка');
+            } finally {
+                btn.disabled = false; btn.textContent = '🚀 Запустить парсинг';
+            }
+        });
+
+        // Экспорт Excel
+        document.getElementById('btn-export').addEventListener('click', () => {
+            window.open(`${API_BASE}/api/admin/export/excel?x-admin-key=${ADMIN_KEY}`, '_blank');
+        });
+
+        // Загрузка данных админки
+        async function loadAdminData() {
+            try {
+                // Статистика
+                const statsRes = await fetch(`${API_BASE}/api/admin/stats`, { headers: { 'x-admin-key': ADMIN_KEY } });
+                const stats = await statsRes.json();
+                document.getElementById('admin-stats').innerHTML = `📊 Всего: <b>${stats.total}</b> | 🔥 Горячих: <b>${stats.hot}</b>`;
+                
+                // Список
+                const leadsRes = await fetch(`${API_BASE}/api/admin/leads?limit=10`, { headers: { 'x-admin-key': ADMIN_KEY } });
+                const data = await leadsRes.json();
+                document.getElementById('admin-leads-list').innerHTML = data.leads.map(l => `
+                    <div class="lead-card">
+                        <div class="lead-title">${l.company}</div>
+                        <div class="lead-info">📞 ${l.phone || '—'} |  ${l.city || '—'}</div>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        // --- ОСНОВНАЯ ЛОГИКА ---
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('screen-' + id).classList.add('active');
             document.getElementById('main-toolbar').style.display = (id === 'leads') ? 'flex' : 'none';
         }
 
-        // Сброс формы
         document.getElementById('btn-reset').addEventListener('click', () => {
             document.getElementById('cargo_type').value = '';
             document.getElementById('regions').value = '';
-            document.getElementById('min_volume').value = '0';
-            tg.showAlert('✅ Форма очищена');
         });
 
-        // Поиск лидов
         document.getElementById('btn-find').addEventListener('click', async () => {
             const cargo = document.getElementById('cargo_type').value;
             const regions = document.getElementById('regions').value.trim();
+            if (!cargo || !regions) { tg.showAlert('⚠️ Заполни форму'); return; }
             
-            if (!cargo || !regions) {
-                tg.showAlert('⚠️ Укажите тип груза и регион доставки');
-                return;
-            }
-
             const btn = document.getElementById('btn-find');
-            btn.disabled = true;
-            btn.innerHTML = '⏳ Загрузка...';
-
+            btn.disabled = true; btn.innerHTML = '⏳ Загрузка...';
+            
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        init_data: tg.initData,
-                        cargo_type: cargo,
-                        region: regions.split(',')[0].trim()
-                    })
+                const response = await fetch(`${API_BASE}/api/leads?cargo_type=${cargo}&city=${regions}`, {
+                    method: 'GET' // В прошлый раз мы делали POST, но GET удобнее для поиска
                 });
-
-                if (!response.ok) throw new Error('Ошибка доступа');
                 const data = await response.json();
-                currentLeads = data.leads;
-
+                currentLeads = data.leads || [];
+                
+                // Если пусто, пробуем старый метод POST (если ты его оставил) или просто показываем что нашли
                 renderLeads(currentLeads, cargo, regions);
                 showScreen('leads');
-                
-                tg.sendData(JSON.stringify({
-                    action: 'find_clients',
-                    user_id: userId,
-                    name: userName,
-                    timestamp: new Date().toISOString()
-                }));
             } catch (err) {
-                tg.showAlert('❌ Ошибка загрузки. Проверьте соединение.');
-                console.error(err);
+                tg.showAlert('❌ Ошибка сети');
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🔍 Найти клиентов';
+                btn.disabled = false; btn.innerHTML = '🔍 Найти клиентов';
             }
         });
 
-        // Отображение лидов
         function renderLeads(leads, cargo, regions) {
             const container = document.getElementById('leads-list');
-            const countEl = document.getElementById('leads-count');
-            const summaryEl = document.getElementById('filters-summary');
-            
-            const cargoNames = {
-                'одежда_текстиль': 'Одежда и текстиль',
-                'электроника': 'Электроника',
-                'оборудование': 'Оборудование',
-                'товары_для_дома': 'Товары для дома',
-                'автозапчасти': 'Автозапчасти',
-                'сырьё': 'Сырьё',
-                'любые': 'Любые грузы'
-            };
-            summaryEl.innerHTML = `<b>Фильтры:</b> ${cargoNames[cargo] || cargo} | 📍 ${regions}`;
-            countEl.textContent = leads.length;
-            
+            document.getElementById('leads-count').textContent = leads.length;
             if (leads.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">😕</div>
-                        <p>Пока нет лидов по этим параметрам</p>
-                        <button class="btn btn-outline" style="margin-top:15px" onclick="showScreen('search')">Изменить поиск</button>
-                    </div>
-                `;
+                container.innerHTML = '<div class="empty-state"><div class="icon">😕</div><p>Нет лидов</p></div>';
                 return;
             }
-            
-            container.innerHTML = leads.map((lead, idx) => `
+            container.innerHTML = leads.map(lead => `
                 <div class="lead-card">
                     <span class="lead-hot">🔥 ${lead.hot_level === 'hot' ? 'Очень горячий' : 'Тёплый'}</span>
                     <div class="lead-title">${lead.company}</div>
-                    <div class="lead-info">👤 ${lead.contact}</div>
-                    <div class="lead-info">📍 ${lead.city} | 📦 ${lead.volume}</div>
-                    <a href="tel:${lead.phone.replace(/\D/g,'')}" class="lead-phone">📞 ${lead.phone}</a>
-                    <div class="lead-info">🔍 Источник: ${lead.source}</div>
-                    <div class="lead-reason">${lead.reason}</div>
+                    <div class="lead-info"> ${lead.city || 'Не указан'} | 📦 ${lead.cargo_type || 'Любые'}</div>
+                    <a href="tel:${lead.phone?.replace(/\D/g,'')}" class="lead-phone">📞 ${lead.phone || 'Нет телефона'}</a>
+                    <div class="lead-reason">${lead.reason || 'Найдено автоматически'}</div>
                 </div>
             `).join('');
         }
 
-        // Скачивание в Excel (CSV)
-        document.getElementById('btn-download').addEventListener('click', () => {
-            if (currentLeads.length === 0) {
-                tg.showAlert('❌ Нет данных для скачивания');
-                return;
-            }
-            
-            const BOM = '\uFEFF';
-            const headers = ['Компания','Контакт','Телефон','Город','Груз','Объём','Уровень','Источник','Почему горячий'];
-            const rows = currentLeads.map(lead => [
-                lead.company,
-                lead.contact,
-                lead.phone,
-                lead.city,
-                lead.cargo_type,
-                lead.volume,
-                lead.hot_level,
-                lead.source,
-                lead.reason.replace(/<[^>]*>/g, '')
-            ]);
-            
-            const csv = [headers, ...rows]
-                .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-                .join('\n');
-                
-            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Лиды_Китай_${new Date().toISOString().slice(0,10)}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            tg.showAlert(`✅ Скачано ${currentLeads.length} лидов!`);
-            
-            tg.sendData(JSON.stringify({
-                action: 'leads_downloaded',
-                user_id: userId,
-                count: currentLeads.length,
-                timestamp: new Date().toISOString()
-            }));
-        });
-
-        // Новый поиск
-        document.getElementById('btn-new').addEventListener('click', () => {
-            showScreen('search');
-            currentLeads = [];
-        });
-
-        // Инициализация времени
+        document.getElementById('btn-new').addEventListener('click', () => showScreen('search'));
         document.getElementById('current-time').textContent = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
     </script>
 </body>
