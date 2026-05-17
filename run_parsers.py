@@ -1,11 +1,13 @@
 import asyncio
 import os
 from dotenv import load_dotenv
-from database import add_lead, is_duplicate
+from database import add_lead, is_duplicate, SessionLocal
 from parsers.leads_parser import LeadsParser
 from parsers.selenium_parser import SeleniumParser
-from parsers.rusprofile_parser import RusprofileParser # <--- Добавили импорт
-from parsers.sites_config import get_active_sites
+from parsers.rusprofile_parser import RusprofileParser
+from parsers.spark_parser import SparkParser
+from parsers.saby_parser import SabyParser
+from export import export_leads_to_excel
 
 load_dotenv()
 
@@ -13,69 +15,60 @@ async def main():
     print("🚀 Запуск парсера лидов...")
     print("=" * 50)
     
-    sites = get_active_sites()
+    db = SessionLocal()
     
-    # Разделяем сайты по типу
-    httpx_sites = [s for s in sites if s.get('parser') == 'httpx']
-    selenium_sites = [s for s in sites if s.get('parser') == 'selenium']
-    
-    print(f" HTTPX сайтов: {len(httpx_sites)}")
-    print(f"🤖 Selenium сайтов: {len(selenium_sites)}")
-    print("=" * 50)
+    # Источники для парсинга
+    sources = {
+        'rusprofile': ['Импорт', 'ВЭД', 'Торговля с Китаем', 'Оптовая торговля'],
+        'spark': ['импорт', 'внешнеэкономическая деятельность', 'китай'],
+        'saby': ['логистика', 'импорт', 'вэд']
+    }
     
     all_leads = []
     
-    # 1. HTTPX (обычные сайты)
-    if httpx_sites:
-        print("\n🌐 Запуск HTTPX парсера...")
-        parser = LeadsParser()
-        httpx_leads = await parser.parse_multiple(httpx_sites)
-        all_leads.extend(httpx_leads)
-    
-    # 2. Selenium (Avito, HH)
-    if selenium_sites:
-        print("\n🤖 Запуск Selenium парсера...")
-        parser = SeleniumParser()
-        for site in selenium_sites:
-            if 'avito' in site['url'].lower():
-                leads = parser.parse_avito(site['url'])
-                all_leads.extend(leads)
-            elif 'hh.ru' in site['url'].lower():
-                leads = parser.parse_hh_ru(site['url'])
-                all_leads.extend(leads)
-        parser.close()
-
-    # 3. Rusprofile (Новый!)
-    print("\n🏢 Запуск поиска компаний (Rusprofile)...")
+    # 1. Rusprofile
+    print("\n🏢 Rusprofile...")
     rp_parser = RusprofileParser()
-    
-    # Ключевые слова для поиска импортеров
-    search_queries = ['Импорт', 'Торговля с Китаем', 'ВЭД', 'Оптовая торговля']
-    
-    for query in search_queries:
+    for query in sources['rusprofile']:
         leads = await rp_parser.search(query)
         all_leads.extend(leads)
-        rp_parser.safe_sleep(5, 10) # Длинная пауза между запросами к Rusprofile
+        await asyncio.sleep(5)
     
-    # 4. Сохранение в базу
-    print("\n💾 Сохранение в базу...")
+    # 2. Spark
+    print("\n💎 Spark...")
+    spark_parser = SparkParser()
+    for query in sources['spark']:
+        leads = await spark_parser.search_companies(query)
+        all_leads.extend(leads)
+        await asyncio.sleep(5)
+    
+    # 3. Saby
+    print("\n📋 Saby...")
+    saby_parser = SabyParser()
+    for query in sources['saby']:
+        leads = await saby_parser.search_companies(query)
+        all_leads.extend(leads)
+        await asyncio.sleep(5)
+    
+    # Сохранение
+    print(f"\n💾 Сохранение {len(all_leads)} лидов...")
     saved = 0
     skipped = 0
     
     for lead in all_leads:
         try:
-            # Проверяем дубли (по названию компании)
-            if is_duplicate('', lead.get('company', '')):
+            if is_duplicate(db, lead.get('phone', ''), lead.get('company', '')):
                 skipped += 1
                 continue
-            add_lead(**lead)
+            add_lead(db, **lead)
             saved += 1
-            print(f"✅ {lead['company'][:50]}...")
         except Exception as e:
-            print(f"❌ Ошибка сохранения: {e}")
+            print(f"❌ Ошибка: {e}")
+    
+    db.close()
     
     print("=" * 50)
-    print(f"✨ Готово! Добавлено: {saved} | Пропущено дублей: {skipped}")
+    print(f"✨ Готово! Добавлено: {saved} | Пропущено: {skipped}")
 
 if __name__ == "__main__":
     asyncio.run(main())
