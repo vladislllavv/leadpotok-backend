@@ -11,7 +11,9 @@ class RusprofileParser:
         self.base_url = "https://www.rusprofile.ru/search"
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+            'Referer': 'https://www.rusprofile.ru/'
         }
     
     def safe_sleep(self, min_sec=3, max_sec=6):
@@ -20,11 +22,10 @@ class RusprofileParser:
     
     async def search(self, query: str) -> list:
         """Ищет компании по ключевому слову"""
-        print(f"🏢 Rusprofile поиск: '{query}'")
+        print(f" Rusprofile поиск: '{query}'")
         leads = []
         
         try:
-            # Тип ul (юридические лица), ищем по названию/ОКВЭД
             url = f"{self.base_url}?type=ul&query={query}"
             
             async with httpx.AsyncClient(follow_redirects=True, timeout=30, verify=False) as client:
@@ -33,46 +34,38 @@ class RusprofileParser:
                 
                 soup = BeautifulSoup(resp.text, 'lxml')
                 
-                # Находим карточки компаний
-                # На Rusprofile это обычно ссылки внутри div.card
-                cards = soup.select('a.text-truncate.d-block')
+                # 🔍 Универсальный селектор: все ссылки вида /id/123456
+                links = soup.select('a[href^="/id/"]')
                 
-                if not cards:
-                    print(f"⚠️ Ничего не найдено по запросу '{query}'")
+                if not links:
+                    print(f"⚠️ Ничего не найдено. Статус: {resp.status_code}")
+                    # Отладка: покажем фрагмент ответа, чтобы понять структуру
+                    print(f"🔍 Фрагмент ответа: {resp.text[:300]}...")
                     return []
                 
-                for card in cards[:5]:  # Берем первые 5 компаний за раз (чтобы не забанили)
-                    try:
-                        company_name = card.text.strip()
-                        company_link = card['href']
-                        
-                        # Формируем полную ссылку
-                        if company_link.startswith('/'):
-                            company_link = "https://www.rusprofile.ru" + company_link
-                        
-                        lead = {
-                            'company': company_name,
-                            'contact': '',
-                            'phone': '', # Телефон часто скрыт, будем искать отдельно или вручную
-                            'city': '',
-                            'cargo_type': 'import',
-                            'volume': '',
-                            'source': f'rusprofile:{company_link}',
-                            'reason': f'Активный импортер (найдено по запросу "{query}")',
-                            'hot_level': 'warm',
-                            'created_at': datetime.now().isoformat()
-                        }
-                        leads.append(lead)
-                        print(f"✅ Найдена компания: {company_name}")
-                        
-                    except Exception as e:
-                        print(f"️ Ошибка обработки карточки: {e}")
+                seen = set()
+                for link in links[:5]:  # Берём первые 5 уникальных
+                    href = link['href']
+                    if href in seen: 
+                        continue
+                    seen.add(href)
+                    
+                    company_name = link.text.strip()
+                    if len(company_name) < 4:  # Пропускаем короткие/пустые
                         continue
                     
-                    # Пауза между компаниями
-                    self.safe_sleep(2, 4)
+                    full_url = f"https://www.rusprofile.ru{href}"
                     
-        except Exception as e:
-            print(f"❌ Ошибка Rusprofile: {e}")
-            
-        return leads
+                    lead = {
+                        'company': company_name,
+                        'contact': '',
+                        'phone': '',
+                        'city': '',
+                        'cargo_type': 'import',
+                        'volume': '',
+                        'source': f'rusprofile:{full_url}',
+                        'reason': f'Найдено по запросу "{query}"',
+                        'hot_level': 'warm',
+                        'created_at': datetime.now().isoformat()
+                    }
+                    leads.append(lead)
