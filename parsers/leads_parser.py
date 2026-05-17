@@ -3,6 +3,12 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import time
 import random
+import re
+import warnings
+import urllib3
+
+# Отключаем предупреждения о небезопасных соединениях (для тестов)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class LeadsParser:
     """Парсер для поиска лидов на сайтах объявлений"""
@@ -27,8 +33,6 @@ class LeadsParser:
     
     def extract_phone(self, text: str) -> str:
         """Извлекает телефон из текста"""
-        import re
-        # Паттерн для российских номеров
         pattern = r'(\+7[\s\-\(\)]?\(?\d{3}\)?[\s\-\(\)]?\d{3}[\s\-\(\)]?\d{2}[\s\-\(\)]?\d{2})'
         match = re.search(pattern, text)
         return match.group(1) if match else ""
@@ -48,13 +52,14 @@ class LeadsParser:
         print(f"🔍 Парсим: {url}")
         
         try:
-            async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
+            # 🔓 verify=False отключает проверку SSL (для тестов!)
+            async with httpx.AsyncClient(follow_redirects=True, timeout=30, verify=False) as client:
                 response = await client.get(url, headers=self.headers)
                 response.raise_for_status()
                 
                 soup = BeautifulSoup(response.text, 'lxml')
                 
-                # Ищем заголовки (адаптируется под разные сайты)
+                # Ищем заголовки
                 titles = soup.find_all(['h1', 'h2', 'h3', 'h4', 'title'])
                 
                 # Ищем телефоны
@@ -62,15 +67,14 @@ class LeadsParser:
                 phone = self.extract_phone(all_text)
                 
                 leads = []
-                for title in titles[:10]:  # Берём первые 10 заголовков
+                for title in titles[:10]:
                     text = self.clean_text(title.get_text())
                     
-                    # Если есть search_terms, фильтруем по ним
                     if search_terms:
                         if not any(term.lower() in text.lower() for term in search_terms):
                             continue
                     
-                    if len(text) < 10:  # Пропускаем слишком короткие
+                    if len(text) < 10:
                         continue
                     
                     hot_level = 'hot' if self.is_hot_lead(text) else 'warm'

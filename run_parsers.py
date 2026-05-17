@@ -1,7 +1,7 @@
 import asyncio
 import os
 from dotenv import load_dotenv
-from database import add_lead
+from database import add_lead, is_duplicate
 from parsers.leads_parser import LeadsParser
 from parsers.sites_config import get_active_sites
 
@@ -23,7 +23,7 @@ async def main():
     
     all_leads = await parser.parse_multiple(sites)
     
-        saved = 0
+    saved = 0
     skipped = 0
     for lead in all_leads:
         try:

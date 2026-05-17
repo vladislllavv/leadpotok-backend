@@ -59,10 +59,10 @@ def add_lead(company: str, contact: str, phone: str, city: str,
     """, (company, contact, phone, city, cargo_type, volume, source, reason, hot_level))
     conn.commit()
     conn.close()
+
 def is_duplicate(phone: str, company: str) -> bool:
     """Проверяет, есть ли уже такой лид в базе"""
     conn = get_db()
-    # Ищем по телефону ИЛИ по названию компании (очищенному от пробелов)
     clean_company = company.replace(' ', '').lower()[:50]
     row = conn.execute(
         "SELECT id FROM leads WHERE phone = ? OR LOWER(REPLACE(company, ' ', '')) LIKE ?",
