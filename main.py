@@ -1,133 +1,89 @@
-import os
-from fastapi import FastAPI, Depends, Header, HTTPException, Query
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from database import get_db, add_lead, is_duplicate, get_leads, get_stats, Lead, SessionLocal
-from parsers.rusprofile_parser import RusprofileParser
-from export import export_leads_to_excel
-import asyncio
+# Добавь импорты в начало
+from parsers.vk_parser import VKParser
+from parsers.vk_ai_filter import VKAIFilter
 
-app = FastAPI()
+# ... (существующий код)
 
-# 🔥 ВАЖНО: Разрешаем ВСЕ источники для CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем все
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 🔐 Проверка админ-ключа
-ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
-
-def verify_admin(x_admin_key: str = Header(None)):
-    if not ADMIN_API_KEY:
-        raise HTTPException(status_code=500, detail="ADMIN_API_KEY not set")
-    if x_admin_key != ADMIN_API_KEY:
-        raise HTTPException(status_code=403, detail="Неверный админ-ключ")
-    return True
-
-@app.get("/")
-async def root():
-    return {"status": "ok", "message": "LeadPotok API is running"}
-
-@app.get("/api/leads")
-async def get_public_leads(cargo_type: str = Query(None), city: str = Query(None)):
-    """Публичный эндпоинт для Mini App"""
-    try:
-        db = next(get_db())
-        leads = get_leads(db, cargo_type, city, limit=50)
-        db.close()
-        return {
-            "leads": [
-                {
-                    "id": l.id, "company": l.company, "phone": l.phone,
-                    "city": l.city, "source": l.source, "hot_level": l.hot_level,
-                    "reason": l.reason, "cargo_type": l.cargo_type
-                } for l in leads
-            ]
-        }
-    except Exception as e:
-        return {"error": str(e), "leads": []}
-
-# --- АДМИН ЭНДПОИНТЫ ---
-
-@app.get("/api/admin/stats")
-async def admin_stats(x_admin_key: str = Header(None)):
-    """Статистика для админки"""
+@app.post("/api/admin/parse/vk")
+async def trigger_vk_parse(x_admin_key: str = Header(None)):
+    """Запускает парсинг VK групп"""
     if not ADMIN_API_KEY or x_admin_key != ADMIN_API_KEY:
         raise HTTPException(status_code=403, detail="Неверный ключ")
     
-    try:
-        db = next(get_db())
-        stats = get_stats(db)
-        db.close()
-        return stats
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/admin/leads")
-async def admin_leads(limit: int = 50, x_admin_key: str = Header(None)):
-    """Список лидов для админки"""
-    if not ADMIN_API_KEY or x_admin_key != ADMIN_API_KEY:
-        raise HTTPException(status_code=403, detail="Неверный ключ")
-    
-    try:
-        db = next(get_db())
-        leads = get_leads(db, limit=limit)
-        db.close()
-        return {
-            "leads": [
-                {
-                    "id": l.id, "company": l.company, "phone": l.phone,
-                    "city": l.city, "source": l.source, "hot_level": l.hot_level,
-                    "created_at": l.created_at.isoformat() if l.created_at else None
-                } for l in leads
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/admin/parse/rusprofile")
-async def trigger_rusprofile(query: str = Query(...), x_admin_key: str = Header(None)):
-    """Запускает парсинг Rusprofile в фоне"""
-    if not ADMIN_API_KEY or x_admin_key != ADMIN_API_KEY:
-        raise HTTPException(status_code=403, detail="Неверный ключ")
-    
-    async def run_parser():
+    async def run_vk_parser():
         try:
-            parser = RusprofileParser()
-            leads = await parser.search(query)
+            parser = VKParser()
+            ai_filter = VKAIFilter()
+            
+            leads = await parser.parse_all_groups()
+            
             db = next(get_db())
-            count = 0
+            new_leads_count = 0
+            
             for lead in leads:
+                # AI фильтрация
+                is_valid, score = ai_filter.filter_lead(lead)
+                
+                if not is_valid or score < 60:
+                    print(f"⚠️ Отфильтровано (score: {score})")
+                    continue
+                
+                # Проверяем дубли
                 if not is_duplicate(db, lead.get('phone', ''), lead.get('company', '')):
+                    # Добавляем score в reason
+                    lead['reason'] = f"[Score: {score}/100] {lead['reason']}"
+                    lead['hot_level'] = 'hot' if score >= 80 else 'warm'
+                    
                     add_lead(db, **lead)
-                    count += 1
+                    new_leads_count += 1
+                    
+                    # 🔔 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ В TELEGRAM
+                    if score >= 80:  # Только очень горячие
+                        await send_telegram_notification(lead, score)
+            
             db.close()
-            print(f"✅ Парсинг '{query}' завершен. Добавлено {count} компаний.")
+            print(f"✅ VK парсинг завершён. Добавлено: {new_leads_count}")
+            
         except Exception as e:
-            print(f"❌ Ошибка парсинга: {e}")
-
-    asyncio.create_task(run_parser())
-    return {"status": "started", "message": f"Поиск '{query}' запущен в фоне"}
-
-@app.get("/api/admin/export/excel")
-async def export_excel(cargo_type: str = Query(None), city: str = Query(None), x_admin_key: str = Header(None)):
-    """Скачивает Excel файл"""
-    if not ADMIN_API_KEY or x_admin_key != ADMIN_API_KEY:
-        raise HTTPException(status_code=403, detail="Неверный ключ")
+            print(f"❌ Ошибка VK парсинга: {e}")
     
+    asyncio.create_task(run_vk_parser())
+    return {"status": "started", "message": "VK парсинг запущен"}
+
+# Функция отправки уведомлений
+async def send_telegram_notification(lead: dict, score: int):
+    """Отправляет уведомление в Telegram о новой заявке"""
     try:
-        file = export_leads_to_excel(cargo_type, city)
-        return StreamingResponse(
-            file,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=leadpotok_leads.xlsx"}
+        from aiogram import Bot
+        
+        bot_token = os.getenv("BOT_TOKEN")
+        admin_id = os.getenv("ADMIN_ID")
+        
+        if not bot_token or not admin_id:
+            return
+        
+        bot = Bot(token=bot_token)
+        
+        message = f"""
+🔥 <b>НОВАЯ ЗАЯВКА ИЗ VK!</b> (Score: {score}/100)
+
+📝 <b>Текст:</b>
+{lead['reason'][:300]}
+
+📞 <b>Контакты:</b>
+{lead.get('phone', 'Нет телефона')}
+{lead.get('contact', 'Нет Telegram')}
+
+🔗 <a href="{lead['source'].replace('vk:', 'https://')}">Открыть пост</a>
+        """.strip()
+        
+        await bot.send_message(
+            chat_id=admin_id,
+            text=message,
+            parse_mode='HTML'
         )
+        
+        await bot.session.close()
+        
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e)}
-        )
+        print(f"❌ Ошибка отправки уведомления: {e}")

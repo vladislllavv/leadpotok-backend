@@ -83,12 +83,12 @@
 <body>
 
     <!-- 🟢 КНОПКА АДМИНКИ -->
-    <button id="fab-admin" class="fab-admin">⚙️</button>
+    <button id="fab-admin" class="fab-admin">️</button>
 
     <!-- ЭКРАН 1: ПОИСК -->
     <div id="screen-search" class="screen active">
         <div class="header">
-            <div class="logo">🇨→🇷🇺 ЛидПоток</div>
+            <div class="logo">🇨→🇷 ЛидПоток</div>
             <div class="subtitle">Находи импортёров для доставки</div>
         </div>
         
@@ -125,7 +125,7 @@
     <!-- ЭКРАН 3: АДМИНКА -->
     <div id="screen-admin" class="screen">
         <div class="header">
-            <div class="logo">️ Управление</div>
+            <div class="logo">⚙️ Управление</div>
             <div class="subtitle">Облачный парсер</div>
         </div>
 
@@ -136,17 +136,20 @@
             <button class="btn" id="btn-login">🔓 Войти</button>
         </div>
 
-        <!-- Панель управления (скрыта до входа) -->
+        <!-- Панель управления -->
         <div id="admin-controls" style="display:none">
             <div class="stats-box">
                 <div class="stat-item"><span class="stat-num" id="stat-total">0</span><span class="stat-label">Всего</span></div>
                 <div class="stat-item"><span class="stat-num" id="stat-hot">0</span><span class="stat-label">Горячие</span></div>
             </div>
 
-            <label>🔍 Запрос для поиска (Rusprofile)</label>
+            <label>🔍 Запрос (Rusprofile)</label>
             <input type="text" id="rp-query" value="Импорт" placeholder="Например: ВЭД">
-            
             <button class="btn" id="btn-parse">🚀 Запустить парсинг</button>
+            
+            <label style="margin-top:15px; display:block;">🔵 VK Группы (Заявки)</label>
+            <button class="btn btn-outline" id="btn-parse-vk">🔵 Парсить VK группы</button>
+            
             <button class="btn btn-outline" id="btn-refresh">🔄 Обновить данные</button>
             <button class="btn btn-success" id="btn-export">📥 Скачать Excel</button>
             
@@ -155,7 +158,7 @@
                 <div id="admin-leads-list" style="margin-top:10px;"></div>
             </div>
             
-            <button class="btn btn-danger" onclick="logout()" style="margin-top:30px">🚪 Выйти</button>
+            <button class="btn btn-danger" onclick="logout()" style="margin-top:30px"> Выйти</button>
         </div>
     </div>
 
@@ -163,9 +166,7 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         
-        // ССЫЛКА НА API (ВНИМАНИЕ: Проверь, совпадает ли с твоим Render URL)
         const API_BASE = 'https://leadpotok-api.onrender.com';
-        
         let ADMIN_KEY = localStorage.getItem('admin_key') || '';
 
         // --- НАВИГАЦИЯ ---
@@ -183,19 +184,17 @@
             const region = document.getElementById('regions').value;
             const btn = document.getElementById('btn-find');
             
-            btn.disabled = true; btn.textContent = '⏳ Ищем...';
+            btn.disabled = true; btn.textContent = ' Ищем...';
             
             try {
-                // Запрос к публичному API
                 const res = await fetch(`${API_BASE}/api/leads?cargo_type=${cargo}&city=${region}`);
                 const data = await res.json();
-                
                 renderLeads(data.leads);
                 showScreen('leads');
             } catch(e) {
                 tg.showAlert('❌ Ошибка сети');
             } finally {
-                btn.disabled = false; btn.textContent = ' Найти клиентов';
+                btn.disabled = false; btn.textContent = '🔍 Найти клиентов';
             }
         });
 
@@ -204,7 +203,7 @@
             document.getElementById('leads-count').textContent = `Найдено: ${leads.length}`;
             
             if(!leads.length) {
-                list.innerHTML = '<p style="text-align:center; padding:40px; color:var(--hint)"> Ничего не найдено</p>';
+                list.innerHTML = '<p style="text-align:center; padding:40px; color:var(--hint)">🔍 Ничего не найдено</p>';
                 return;
             }
             
@@ -212,15 +211,13 @@
                 <div class="lead-card">
                     <span class="lead-hot">🔥 ${l.hot_level === 'hot' ? 'Горячий' : 'Тёплый'}</span>
                     <div class="lead-title">${l.company}</div>
-                    <div class="lead-info">📦 ${l.cargo_type || 'Любые'} | 📍 ${l.city || 'РФ'}</div>
-                    ${l.phone ? `<a href="tel:${l.phone}" class="lead-phone">📞 Позвонить</a>` : ''}
+                    <div class="lead-info"> ${l.cargo_type || 'Любые'} | 📍 ${l.city || 'РФ'}</div>
+                    ${l.phone ? `<a href="tel:${l.phone}" class="lead-phone"> Позвонить</a>` : ''}
                 </div>
             `).join('');
         }
 
         // --- ЛОГИКА АДМИНКИ ---
-        
-        // Проверка при загрузке
         if(ADMIN_KEY) {
             document.getElementById('login-panel').style.display = 'none';
             document.getElementById('admin-controls').style.display = 'block';
@@ -231,7 +228,6 @@
             const key = document.getElementById('admin-key-input').value;
             if(!key) return;
             
-            // Проверка ключа
             try {
                 const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: {'x-admin-key': key} });
                 if(res.ok) {
@@ -257,13 +253,12 @@
                 document.getElementById('stat-total').textContent = data.total;
                 document.getElementById('stat-hot').textContent = data.hot;
                 
-                // Загружаем список последних
                 const leadsRes = await fetch(`${API_BASE}/api/admin/leads?limit=5`, { headers: {'x-admin-key': ADMIN_KEY} });
                 const leadsData = await leadsRes.json();
                 
                 document.getElementById('admin-leads-list').innerHTML = leadsData.leads.map(l => 
                     `<div style="padding:8px; background:var(--secondary-bg); margin-bottom:5px; border-radius:6px; font-size:13px;">
-                        🏢 ${l.company} <br> <span style="color:var(--hint)">📞 ${l.phone || 'нет'}</span>
+                        🏢 ${l.company} <br> <span style="color:var(--hint)"> ${l.phone || 'нет'}</span>
                     </div>`
                 ).join('');
                 
@@ -272,12 +267,12 @@
             }
         }
 
-        // Запуск парсинга
+        // Запуск парсинга (Rusprofile)
         document.getElementById('btn-parse').addEventListener('click', async () => {
             const query = document.getElementById('rp-query').value;
             const btn = document.getElementById('btn-parse');
             
-            btn.disabled = true; btn.textContent = '⏳ Работает... (около 1 мин)';
+            btn.disabled = true; btn.textContent = '⏳ Работает...';
             
             try {
                 await fetch(`${API_BASE}/api/admin/parse/rusprofile?query=${encodeURIComponent(query)}`, {
@@ -285,37 +280,43 @@
                 });
                 
                 tg.showAlert('✅ Парсинг запущен! Подожди минуту и нажми "Обновить".');
-                
-                // Через 60 секунд обновим данные
-                setTimeout(() => {
-                    btn.disabled = false; btn.textContent = '🚀 Запустить парсинг';
-                    loadAdminData();
-                }, 60000);
-                
+                setTimeout(() => { btn.disabled = false; btn.textContent = '🚀 Запустить парсинг'; loadAdminData(); }, 60000);
             } catch(e) {
                 btn.disabled = false; btn.textContent = '🚀 Запустить парсинг';
-                tg.showAlert('❌ Ошибка запуска');
+            }
+        });
+
+        // Запуск парсинга (VK)
+        document.getElementById('btn-parse-vk').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-parse-vk');
+            btn.disabled = true; btn.textContent = '⏳ Ищем в VK...';
+            
+            try {
+                await fetch(`${API_BASE}/api/admin/parse/vk`, {
+                    method: 'POST', headers: {'x-admin-key': ADMIN_KEY}
+                });
+                
+                tg.showAlert('✅ VK Парсинг запущен! Уведомления придут в Telegram.');
+                setTimeout(() => { btn.disabled = false; btn.textContent = '🔵 Парсить VK группы'; loadAdminData(); }, 60000);
+            } catch(e) {
+                btn.disabled = false; btn.textContent = '🔵 Парсить VK группы';
             }
         });
 
         document.getElementById('btn-refresh').addEventListener('click', loadAdminData);
 
-        // Скачивание Excel (ИСПРАВЛЕННОЕ)
+        // Скачивание Excel (Исправлено)
         document.getElementById('btn-export').addEventListener('click', async () => {
-            tg.showAlert('⏳ Генерирую файл...');
+            tg.showAlert(' Генерирую файл...');
             try {
                 const url = `${API_BASE}/api/admin/export/excel?x-admin-key=${encodeURIComponent(ADMIN_KEY)}`;
-                
-                // Используем fetch + blob, чтобы перехватить ошибки
                 const response = await fetch(url);
                 
                 if (!response.ok) {
-                    // Если сервер вернул ошибку (например 403), мы прочитаем JSON и покажем его
                     const errorData = await response.json();
                     throw new Error(errorData.detail || 'Ошибка сервера');
                 }
                 
-                // Если всё ок, скачиваем
                 const blob = await response.blob();
                 const downloadUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
