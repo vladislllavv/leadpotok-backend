@@ -22,7 +22,7 @@ class RusprofileParser:
     
     async def search(self, query: str) -> list:
         """Ищет компании по ключевому слову"""
-        print(f" Rusprofile поиск: '{query}'")
+        print(f"🏢 Rusprofile поиск: '{query}'")
         leads = []
         
         try:
@@ -39,33 +39,43 @@ class RusprofileParser:
                 
                 if not links:
                     print(f"⚠️ Ничего не найдено. Статус: {resp.status_code}")
-                    # Отладка: покажем фрагмент ответа, чтобы понять структуру
-                    print(f"🔍 Фрагмент ответа: {resp.text[:300]}...")
                     return []
                 
                 seen = set()
                 for link in links[:5]:  # Берём первые 5 уникальных
-                    href = link['href']
-                    if href in seen: 
+                    try:
+                        href = link.get('href')
+                        if not href or href in seen: 
+                            continue
+                        seen.add(href)
+                        
+                        company_name = link.text.strip()
+                        if len(company_name) < 4:  # Пропускаем короткие/пустые
+                            continue
+                        
+                        full_url = f"https://www.rusprofile.ru{href}"
+                        
+                        lead = {
+                            'company': company_name,
+                            'contact': '',
+                            'phone': '',
+                            'city': '',
+                            'cargo_type': 'import',
+                            'volume': '',
+                            'source': f'rusprofile:{full_url}',
+                            'reason': f'Найдено по запросу "{query}"',
+                            'hot_level': 'warm',
+                            'created_at': datetime.now().isoformat()
+                        }
+                        leads.append(lead)
+                        print(f"✅ Найдена компания: {company_name}")
+                        self.safe_sleep(2, 4)
+                        
+                    except Exception as inner_e:
+                        print(f"⚠️ Ошибка обработки карточки: {inner_e}")
                         continue
-                    seen.add(href)
                     
-                    company_name = link.text.strip()
-                    if len(company_name) < 4:  # Пропускаем короткие/пустые
-                        continue
-                    
-                    full_url = f"https://www.rusprofile.ru{href}"
-                    
-                    lead = {
-                        'company': company_name,
-                        'contact': '',
-                        'phone': '',
-                        'city': '',
-                        'cargo_type': 'import',
-                        'volume': '',
-                        'source': f'rusprofile:{full_url}',
-                        'reason': f'Найдено по запросу "{query}"',
-                        'hot_level': 'warm',
-                        'created_at': datetime.now().isoformat()
-                    }
-                    leads.append(lead)
+        except Exception as e:
+            print(f"❌ Ошибка Rusprofile: {e}")
+            
+        return leads
