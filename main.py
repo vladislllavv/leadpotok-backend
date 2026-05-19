@@ -1,7 +1,8 @@
 import os
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
@@ -19,11 +20,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("🛑 Shutting down...")
 
-app = FastAPI(
-    title="LeadPotok Pro",
-    version="2.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="LeadPotok", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,11 +30,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем роуты (уже с префиксом /api внутри router)
+# Подключаем API роуты
 app.include_router(endpoints.router)
 
-# Статика
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+# Отдаём index.html явно
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    try:
+        with open("frontend/index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "<h1>Frontend not found</h1>"
+
+# Статические файлы (CSS, JS, images)
+app.mount("/static", StaticFiles(directory="frontend", html=True), name="static")
 
 @app.get("/health")
 async def health():
