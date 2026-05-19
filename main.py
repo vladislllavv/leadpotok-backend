@@ -1,6 +1,3 @@
-cd ~/Desktop/leadpotok-backend
-
-cat > main.py << 'EOF'
 import os
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -16,7 +13,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Берем ключ из Render, если нет - используем запасной
 ADMIN_KEY = os.getenv("ADMIN_API_KEY", "test_key_123")
 
 @app.get("/health")
@@ -31,7 +27,6 @@ async def serve_frontend():
     except Exception as e:
         return HTMLResponse(content=f"<h1>Ошибка: {e}</h1>")
 
-# Теперь принимаем ключ И из URL (?x-admin-key=...), И из заголовка
 @app.get("/api/admin/stats")
 async def get_stats(
     x_admin_key_query: str = Query(None, alias="x-admin-key"),
@@ -80,4 +75,3 @@ async def export_excel(
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 10000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
-EOF
