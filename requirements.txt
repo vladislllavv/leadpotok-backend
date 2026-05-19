@@ -1,14 +1,37 @@
+# Core
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 python-dotenv>=1.0.0
-aiogram>=3.4.0
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # Для PostgreSQL
+alembic>=1.13.0  # Миграции
+
+# Parsing
 httpx>=0.25.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
-selenium>=4.15.0
-webdriver-manager>=4.0.1
+vk-api>=11.9.9  # Для VK
+
+# AI & NLP
+openai>=1.12.0  # Или замени на gigachat/yandexgpt
+natasha>=1.6.0  # NLP для русского
+razdel>=0.5.0
+
+# Async & Queue
+celery>=5.3.0
+redis>=5.0.0
+aiohttp>=3.9.0
+
+# Export
 pandas>=2.0.0
 openpyxl>=3.1.0
-psycopg2-binary>=2.9.0
-sqlalchemy>=2.0.0
-apscheduler>=3.10.0
+
+# Telegram Bot
+aiogram>=3.4.0
+
+# Utils
+pyyaml>=6.0
+pydantic>=2.6.0
+loguru>=0.7.0

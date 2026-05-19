@@ -1,0 +1,53 @@
+sources:
+  rusprofile:
+    name: "Rusprofile.ru"
+    base_url: "https://www.rusprofile.ru"
+    search_endpoint: "/search"
+    parser_class: "RusprofileParser"
+    rate_limit: 5  # секунд между запросами
+    max_results: 10
+    enabled: true
+    
+  spark:
+    name: "Spark.ru"
+    base_url: "https://www.spark.ru"
+    search_endpoint: "/search/Company/Search"
+    parser_class: "SparkParser"
+    rate_limit: 6
+    max_results: 10
+    enabled: true
+    
+  saby:
+    name: "Saby.ru"
+    base_url: "https://saby.ru"
+    search_endpoint: "/companies"
+    parser_class: "SabyParser"
+    rate_limit: 4
+    max_results: 10
+    enabled: true
+    
+  # ... ещё 24 источника
+  
+  logist_ru:
+    name: "Logist.ru"
+    base_url: "https://logist.ru"
+    search_endpoint: "/board"
+    parser_class: "HttpxParser"
+    rate_limit: 3
+    max_results: 20
+    enabled: true
+
+vk_monitoring:
+  enabled: true
+  groups_file: "vk_groups.yaml"
+  check_interval: 300  # секунд
+  ai_model: "gpt-4-turbo"  # или "gigachat", "yandexgpt"
+  
+deduplication:
+  fields: ["phone", "inn", "website", "company_normalized"]
+  global_scope: true  # дедупликация между всеми пользователями
+  
+export:
+  default_format: "xlsx"
+  include_stats: true
+  auto_format_columns: true
