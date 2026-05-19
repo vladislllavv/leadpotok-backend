@@ -1,29 +1,28 @@
-<!-- В head добавь мета-теги для Telegram -->
-<meta name="theme-color" content="#3390ec">
-<meta name="telegram-web-app" content="true">
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>LeadPotok</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <h1>LeadPotok Mini App</h1>
+    <button onclick="testAPI()">Тест API</button>
+    <div id="result"></div>
 
-<!-- В body: улучшенный интерфейс -->
-<!-- 1. Экран онбординга при первом запуске -->
-<!-- 2. Переключатель источников (чекбоксы для 27 сайтов) -->
-<!-- 3. Фильтры: тип лида (🔥/🟡/⚪), город, объём -->
-<!-- 4. Кнопка "🔔 Включить уведомления" -->
-<!-- 5. Карточка лида с цветовым индикатором и быстрыми действиями -->
-<!-- 6. Статистика в реальном времени -->
-
-<!-- Пример карточки лида -->
-<div class="lead-card hot">  <!-- hot/warm/cold для цвета -->
-  <div class="lead-header">
-    <span class="lead-type">🔥 Горячий</span>
-    <span class="lead-score">AI: 92/100</span>
-  </div>
-  <h3 class="lead-company">ООО "Восток-Трейдинг"</h3>
-  <p class="lead-desc">Срочно ищу карго из Китая, 5 тонн электроники...</p>
-  <div class="lead-contacts">
-    <a href="tel:+79991234567" class="contact-btn">📞 Позвонить</a>
-    <a href="https://t.me/user" class="contact-btn">✈️ Telegram</a>
-  </div>
-  <div class="lead-actions">
-    <button class="btn-sm" onclick="markAsContacted(123)">✅ Обработал</button>
-    <button class="btn-sm" onclick="addToCRM(123)">📋 В CRM</button>
-  </div>
-</div>
+    <script>
+        const API = 'https://leadpotok-api.onrender.com';
+        const ADMIN_KEY = 'твой_ключ'; // Замени на свой
+        
+        async function testAPI() {
+            try {
+                const res = await fetch(`${API}/api/admin/stats?x-admin-key=${ADMIN_KEY}`);
+                const data = await res.json();
+                document.getElementById('result').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch(e) {
+                document.getElementById('result').innerHTML = `Ошибка: ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
