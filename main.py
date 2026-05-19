@@ -1,10 +1,13 @@
+cd ~/Desktop/leadpotok-backend
+
+cat > main.py << 'EOF'
 import os
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-app = FastAPI(title="LeadPotok", version="2.1.0")
+app = FastAPI(title="LeadPotok", version="2.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,11 +16,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Берем ключ из Render, если нет - используем запасной
 ADMIN_KEY = os.getenv("ADMIN_API_KEY", "test_key_123")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": "2.1.0", "env_admin_key": bool(os.getenv("ADMIN_API_KEY"))}
+    return {"status": "ok", "version": "2.2.0", "env_admin_key": bool(os.getenv("ADMIN_API_KEY"))}
 
 @app.get("/")
 async def serve_frontend():
@@ -27,15 +31,24 @@ async def serve_frontend():
     except Exception as e:
         return HTMLResponse(content=f"<h1>Ошибка: {e}</h1>")
 
+# Теперь принимаем ключ И из URL (?x-admin-key=...), И из заголовка
 @app.get("/api/admin/stats")
-async def get_stats(x_admin_key: str = Header(None)):
-    if x_admin_key != ADMIN_KEY:
+async def get_stats(
+    x_admin_key_query: str = Query(None, alias="x-admin-key"),
+    x_admin_key_header: str = Header(None)
+):
+    key = x_admin_key_query or x_admin_key_header
+    if not key or key.strip() != ADMIN_KEY.strip():
         raise HTTPException(403, detail="Неверный ключ")
     return {"total": 12, "hot": 4, "warm": 3, "today": 5}
 
 @app.get("/api/admin/leads")
-async def get_leads(x_admin_key: str = Header(None)):
-    if x_admin_key != ADMIN_KEY:
+async def get_leads(
+    x_admin_key_query: str = Query(None, alias="x-admin-key"),
+    x_admin_key_header: str = Header(None)
+):
+    key = x_admin_key_query or x_admin_key_header
+    if not key or key.strip() != ADMIN_KEY.strip():
         raise HTTPException(403, detail="Неверный ключ")
     return {
         "leads": [
@@ -45,17 +58,26 @@ async def get_leads(x_admin_key: str = Header(None)):
     }
 
 @app.post("/api/admin/parse/vk")
-async def parse_vk(x_admin_key: str = Header(None)):
-    if x_admin_key != ADMIN_KEY:
+async def parse_vk(
+    x_admin_key_query: str = Query(None, alias="x-admin-key"),
+    x_admin_key_header: str = Header(None)
+):
+    key = x_admin_key_query or x_admin_key_header
+    if not key or key.strip() != ADMIN_KEY.strip():
         raise HTTPException(403, detail="Неверный ключ")
-    return {"status": "started", "message": "✅ Парсинг VK запущен (тестовый режим)"}
+    return {"status": "started", "message": "✅ Парсинг VK запущен"}
 
 @app.get("/api/admin/export/excel")
-async def export_excel(x_admin_key: str = Header(None)):
-    if x_admin_key != ADMIN_KEY:
+async def export_excel(
+    x_admin_key_query: str = Query(None, alias="x-admin-key"),
+    x_admin_key_header: str = Header(None)
+):
+    key = x_admin_key_query or x_admin_key_header
+    if not key or key.strip() != ADMIN_KEY.strip():
         raise HTTPException(403, detail="Неверный ключ")
     return HTMLResponse(content="MOCK_EXCEL_FILE", media_type="application/vnd.ms-excel")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 10000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
+EOF
