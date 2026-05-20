@@ -29,11 +29,11 @@
         .btn-vk { background: #0077ff; color: white; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .login-box { background: var(--card); padding: 30px; border-radius: 16px; text-align: center; margin-top: 50px; border: 1px solid #30363d; }
-        .login-box h2 { margin-bottom: 20px; color: var(--accent); }
+        .login-box h2 { margin-bottom: 15px; color: var(--accent); }
+        .login-box p { color: var(--cold); font-size: 14px; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; border: 1px solid #30363d; border-radius: 8px; background: var(--bg); color: var(--text); font-size: 16px; margin-bottom: 15px; outline: none; }
         input:focus { border-color: var(--accent); }
-        .lead { background: var(--card); padding: 14px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid var(--cold); transition: transform 0.2s; }
-        .lead:hover { transform: translateX(4px); }
+        .lead { background: var(--card); padding: 14px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid var(--cold); }
         .lead.hot { border-left-color: var(--hot); }
         .lead.warm { border-left-color: var(--warm); }
         .lead-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -50,6 +50,7 @@
         .empty-state { text-align: center; padding: 40px 20px; color: var(--cold); }
         .loading { text-align: center; padding: 20px; color: var(--cold); }
         .section-title { font-size: 16px; font-weight: 600; margin: 20px 0 12px; color: var(--text); }
+        .error-msg { background: rgba(255, 123, 114, 0.1); border: 1px solid var(--hot); color: var(--hot); padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -57,7 +58,8 @@
 <div id="login-screen">
     <div class="login-box">
         <h2>🤖 AI Lead Agent</h2>
-        <input type="password" id="admin-key" placeholder="Введите ADMIN_API_KEY">
+        <p>Введите ADMIN_API_KEY из Render</p>
+        <input type="password" id="admin-key" placeholder="superadmin123">
         <button class="btn btn-vk" onclick="login()">🔓 Войти</button>
     </div>
 </div>
@@ -94,43 +96,70 @@
     tg.expand();
     tg.ready();
 
+    // API берется автоматически из текущего домена
     const API = window.location.origin;
     let ADMIN_KEY = '';
+
+    // Проверка: сохранялся ли ключ ранее
+    const savedKey = localStorage.getItem('admin_key');
+    if (savedKey) {
+        document.getElementById('admin-key').value = savedKey;
+        setTimeout(() => login(), 500);
+    }
 
     async function login() {
         const input = document.getElementById('admin-key');
         ADMIN_KEY = input.value.trim();
+        
         if (!ADMIN_KEY) {
-            tg.showAlert('❌ Введите админ-ключ');
+            tg.showAlert('❌ Введите ADMIN_API_KEY\n\nГде найти:\nRender Dashboard → Environment → ADMIN_API_KEY');
             return;
         }
 
         const btn = event.target;
+        const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.textContent = '⏳ Проверка...';
+        btn.innerHTML = '⏳ Проверка...';
 
         try {
-            const res = await fetch(API + '/api/stats', {
+            // Проверяем соединение с API
+            const healthRes = await fetch(API + '/health');
+            if (!healthRes.ok) {
+                throw new Error('Сервер не отвечает. Подождите 30 сек.');
+            }
+
+            // Проверяем ключ
+            const statsRes = await fetch(API + '/api/stats', {
                 headers: { 'x-admin-key': ADMIN_KEY }
             });
 
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({detail: 'Ошибка сервера'}));
-                throw new Error(err.detail || `Ошибка ${res.status}`);
+            if (!statsRes.ok) {
+                const errData = await statsRes.json().catch(() => ({}));
+                if (statsRes.status === 403) {
+                    throw new Error('Неверный ADMIN_API_KEY\n\nПроверьте в Render Dashboard');
+                } else if (statsRes.status === 404) {
+                    throw new Error('API endpoint не найден\n\nСервер еще обновляется');
+                } else {
+                    throw new Error(`Ошибка ${statsRes.status}: ${errData.detail || 'Unknown'}`);
+                }
             }
 
-            const data = await res.json();
+            const data = await statsRes.json();
+            
+            // Успешный вход!
             localStorage.setItem('admin_key', ADMIN_KEY);
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').style.display = 'block';
             
             updateStats(data);
             await loadLeads();
-        } catch (e) {
-            tg.showAlert('❌ ' + e.message);
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            tg.showAlert('❌ ' + error.message);
         } finally {
             btn.disabled = false;
-            btn.textContent = '🔓 Войти';
+            btn.innerHTML = originalText;
         }
     }
 
@@ -148,12 +177,21 @@
                 headers: { 'x-admin-key': ADMIN_KEY }
             });
 
-            if (!res.ok) throw new Error('Ошибка загрузки лидов');
+            if (!res.ok) {
+                throw new Error(`Ошибка загрузки: ${res.status}`);
+            }
 
             const data = await res.json();
 
             if (!data.leads || data.leads.length === 0) {
-                container.innerHTML = '<div class="empty-state">📭 Лидов пока нет.<br>Нажмите "Сканировать VK"</div>';
+                container.innerHTML = `
+                    <div class="empty-state">
+                        📭 Лидов пока нет<br><br>
+                        <button class="btn btn-vk" onclick="scanVK()" style="max-width: 250px; margin: 0 auto;">
+                            🕷️ Запустить сканирование
+                        </button>
+                    </div>
+                `;
                 return;
             }
 
@@ -179,8 +217,14 @@
                     </div>
                 `;
             }).join('');
+            
         } catch (e) {
-            container.innerHTML = `<div class="empty-state">❌ Ошибка: ${e.message}</div>`;
+            container.innerHTML = `
+                <div class="error-msg">
+                    ❌ Ошибка загрузки: ${e.message}<br><br>
+                    <button class="btn btn-vk" onclick="loadLeads()" style="margin-top: 10px;">🔄 Повторить</button>
+                </div>
+            `;
         }
     }
 
@@ -189,7 +233,7 @@
         const originalText = btn.innerHTML;
         
         btn.disabled = true;
-        btn.innerHTML = '⏳ Сканирование...';
+        btn.innerHTML = '⏳ Сканирование... (30-60 сек)';
 
         try {
             const res = await fetch(API + '/api/scan/vk', {
@@ -198,8 +242,8 @@
             });
 
             if (!res.ok) {
-                const err = await res.json().catch(() => ({detail: 'Ошибка'}));
-                throw new Error(err.detail || `Ошибка ${res.status}`);
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `Ошибка ${res.status}`);
             }
 
             const data = await res.json();
@@ -207,8 +251,10 @@
             
             await loadLeads();
             await updateStatsFromAPI();
+            
         } catch (e) {
-            tg.showAlert('❌ ' + e.message);
+            console.error('Scan error:', e);
+            tg.showAlert('❌ Ошибка сканирования:\n' + e.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -236,13 +282,9 @@
         return div.innerHTML;
     }
 
-    // Автозаполнение если ключ сохранён
-    window.addEventListener('load', () => {
-        const saved = localStorage.getItem('admin_key');
-        if (saved) {
-            document.getElementById('admin-key').value = saved;
-            setTimeout(login, 500);
-        }
+    // Обработка ошибок
+    window.addEventListener('error', (e) => {
+        console.error('Global error:', e.error);
     });
 </script>
 
