@@ -1,10 +1,16 @@
 import os
-from fastapi import FastAPI, Header, HTTPException, Query
+import logging
+from fastapi import FastAPI, Depends, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+from sqlalchemy import func
+from core.database import init_db, get_db, Lead, User, SessionLocal
+from scanners.vk_scanner import VKScanner
 
-app = FastAPI(title="LeadPotok", version="2.2.0")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="AI Lead Agent", version="4.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,65 +19,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ADMIN_KEY = os.getenv("ADMIN_API_KEY", "test_key_123")
+ADMIN_KEY = os.getenv("ADMIN_API_KEY", "superadmin")
+
+def verify_admin(x_admin_key: str = Header(None)):
+    if x_admin_key != ADMIN_KEY:
+        raise HTTPException(403, detail="Неверный ключ")
 
 @app.get("/health")
-async def health_check():
-    return {"status": "ok", "version": "2.2.0", "env_admin_key": bool(os.getenv("ADMIN_API_KEY"))}
+async def health():
+    return {"status": "ok", "version": "4.0.0"}
 
 @app.get("/")
-async def serve_frontend():
+async def root():
     try:
         with open("frontend/index.html", "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
-    except Exception as e:
-        return HTMLResponse(content=f"<h1>Ошибка: {e}</h1>")
+    except:
+        return HTMLResponse(content="<h1>Frontend not found</h1>")
 
-@app.get("/api/admin/stats")
-async def get_stats(
-    x_admin_key_query: str = Query(None, alias="x-admin-key"),
-    x_admin_key_header: str = Header(None)
-):
-    key = x_admin_key_query or x_admin_key_header
-    if not key or key.strip() != ADMIN_KEY.strip():
-        raise HTTPException(403, detail="Неверный ключ")
-    return {"total": 12, "hot": 4, "warm": 3, "today": 5}
+# --- API ENDPOINTS ---
 
-@app.get("/api/admin/leads")
-async def get_leads(
-    x_admin_key_query: str = Query(None, alias="x-admin-key"),
-    x_admin_key_header: str = Header(None)
-):
-    key = x_admin_key_query or x_admin_key_header
-    if not key or key.strip() != ADMIN_KEY.strip():
-        raise HTTPException(403, detail="Неверный ключ")
+@app.get("/api/leads")
+async def get_leads(x_admin_key: str = Header(None), db: SessionLocal = Depends(get_db)):
+    verify_admin(x_admin_key)
+    leads = db.query(Lead).order_by(Lead.created_at.desc()).limit(50).all()
     return {
         "leads": [
-            {"id": 1, "company": "ООО Восток-Трейдинг", "phone": "+79991234567", "city": "Москва", "lead_type": "hot", "created_at": "2024-05-19T10:00:00"},
-            {"id": 2, "company": "ИП Сидоров", "phone": "+79160000000", "city": "Казань", "lead_type": "warm", "created_at": "2024-05-18T15:30:00"}
+            {
+                "id": l.id, "source": l.source, "type": l.lead_type, 
+                "score": l.score, "contact": l.contact, 
+                "content": l.content[:150] + "...", "url": l.source_url,
+                "created_at": l.created_at.isoformat()
+            } for l in leads
         ]
     }
 
-@app.post("/api/admin/parse/vk")
-async def parse_vk(
-    x_admin_key_query: str = Query(None, alias="x-admin-key"),
-    x_admin_key_header: str = Header(None)
-):
-    key = x_admin_key_query or x_admin_key_header
-    if not key or key.strip() != ADMIN_KEY.strip():
-        raise HTTPException(403, detail="Неверный ключ")
-    return {"status": "started", "message": "✅ Парсинг VK запущен"}
+@app.get("/api/stats")
+async def get_stats(x_admin_key: str = Header(None), db: SessionLocal = Depends(get_db)):
+    verify_admin(x_admin_key)
+    total = db.query(func.count(Lead.id)).scalar()
+    hot = db.query(func.count(Lead.id)).filter(Lead.lead_type == 'hot').scalar()
+    return {"total": total, "hot": hot}
 
-@app.get("/api/admin/export/excel")
-async def export_excel(
-    x_admin_key_query: str = Query(None, alias="x-admin-key"),
-    x_admin_key_header: str = Header(None)
-):
-    key = x_admin_key_query or x_admin_key_header
-    if not key or key.strip() != ADMIN_KEY.strip():
-        raise HTTPException(403, detail="Неверный ключ")
-    return HTMLResponse(content="MOCK_EXCEL_FILE", media_type="application/vnd.ms-excel")
+@app.post("/api/scan/vk")
+async def scan_vk(x_admin_key: str = Header(None)):
+    verify_admin(x_admin_key)
+    try:
+        scanner = VKScanner()
+        result = scanner.scan()
+        return result
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
