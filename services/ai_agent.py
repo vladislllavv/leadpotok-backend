@@ -8,34 +8,33 @@ logger = logging.getLogger(__name__)
 
 class LogisticsAIAgent:
     def __init__(self):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        api_key = os.getenv("GROQ_API_KEY")
+        self.client = Groq(api_key=api_key) if api_key else None
         self.model = "llama-3.3-70b-versatile"
 
     def analyze(self, text: str, source: str = "VK") -> Optional[Dict]:
-        """Анализирует текст и определяет, является ли это лидом"""
+        if not self.client:
+            logger.warning("GROQ_API_KEY not set. Skipping AI analysis.")
+            return {"is_lead": True, "type": "warm", "score": 50, "contact": None, "summary": "AI disabled"}
+
         prompt = f"""
-Ты профессиональный AI-брокер в логистике.
-Проанализируй сообщение из {source}.
+Ты AI-брокер в логистике. Проанализируй сообщение из {source}.
 Задача: Найти людей, которым нужна доставка груза ИЗ КИТАЯ.
 
 Текст:
-"{text[:1500]}"
+"{text[:1200]}"
 
 Критерии:
-1. HOT: Срочный запрос, конкретный объем ("нужно 5 тонн", "срочно", "сколько стоит доставка").
-2. WARM: Планирует, ищет партнеров, общий вопрос ("кто возит из Китая?", "ищу карго").
-3. COLD: Спам, реклама, продажа услуг ("мы доставляем", "аренда склада"), или не про логистику.
+- HOT: Срочный запрос, конкретный объем, бюджет ("нужно 5 тонн срочно", "сколько стоит доставка 20фут").
+- WARM: Планирует, ищет партнеров, общий вопрос ("кто возит из китая?", "ищу карго надежно").
+- COLD: Спам, реклама, продажа услуг ("мы доставляем"), или не про логистику.
 
-Если это HOT или WARM, извлеки:
-- contact: телефон или @username автора.
-- summary: краткая суть запроса.
-
-ВЕРНИ СТРОГО JSON (без markdown):
+Верни СТРОГО JSON (без markdown и пояснений):
 {{
   "is_lead": true/false,
   "type": "hot" | "warm" | "cold",
   "score": 0-100,
-  "contact": "найденный контакт или null",
+  "contact": "найденный телефон или @username или null",
   "summary": "суть в 1 предложении"
 }}
 """
@@ -48,5 +47,5 @@ class LogisticsAIAgent:
             )
             return json.loads(response.choices[0].message.content)
         except Exception as e:
-            logger.error(f"AI Error: {e}")
+            logger.error(f"AI Analysis Error: {e}")
             return None

@@ -2,85 +2,115 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI Lead Agent</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #0d1117; color: #c9d1d9; font-family: sans-serif; padding: 20px; margin: 0; }
-        .card { background: #161b22; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #30363d; }
-        h1, h2 { color: #58a6ff; text-align: center; margin-top: 0; }
-        input, button { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; }
-        button { background: #0077ff; border: none; font-weight: bold; cursor: pointer; }
-        button:disabled { opacity: 0.5; }
-        .stats { display: flex; gap: 10px; margin-bottom: 15px; }
-        .stat { flex: 1; background: #161b22; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #30363d; }
-        .stat-num { font-size: 24px; font-weight: bold; color: #58a6ff; }
-        .lead { background: #161b22; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #8b949e; }
-        .lead.hot { border-left-color: #ff7b72; }
-        .lead.warm { border-left-color: #d29922; }
-        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; float: right; }
-        .hot .badge { background: rgba(255,123,114,0.2); color: #ff7b72; }
-        .warm .badge { background: rgba(210,153,34,0.2); color: #d29922; }
+        :root { --bg: var(--tg-theme-bg-color, #0d1117); --card: var(--tg-theme-secondary-bg-color, #161b22); --text: var(--tg-theme-text-color, #c9d1d9); --accent: #58a6ff; --hot: #ff7b72; --warm: #d29922; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 16px; line-height: 1.5; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #30363d; }
+        .logo { font-size: 20px; font-weight: bold; color: var(--accent); }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #30363d; }
+        .stat-num { font-size: 28px; font-weight: bold; color: var(--accent); }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px; background: #0077ff; color: white; transition: opacity 0.2s; }
+        .btn:disabled { opacity: 0.5; }
+        .login-box { background: var(--card); padding: 30px 20px; border-radius: 16px; text-align: center; margin-top: 40px; border: 1px solid #30363d; }
+        input { width: 100%; padding: 12px; border: 1px solid #30363d; border-radius: 8px; background: var(--bg); color: var(--text); font-size: 16px; margin-bottom: 15px; outline: none; }
+        input:focus { border-color: var(--accent); }
+        .lead { background: var(--card); padding: 14px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #8b949e; }
+        .lead.hot { border-left-color: var(--hot); }
+        .lead.warm { border-left-color: var(--warm); }
+        .lead-header { display: flex; justify-content: space-between; font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .badge.hot { background: rgba(255,123,114,0.2); color: var(--hot); }
+        .badge.warm { background: rgba(210,153,34,0.2); color: var(--warm); }
+        .lead-content { font-size: 14px; margin-bottom: 8px; }
+        .lead-footer { display: flex; justify-content: space-between; font-size: 12px; }
+        .link { color: var(--accent); text-decoration: none; }
     </style>
 </head>
 <body>
-    <div id="login" class="card">
-        <h2>🤖 AI Agent Login</h2>
-        <input type="password" id="key" placeholder="ADMIN_API_KEY">
-        <button onclick="login()"> Войти</button>
-    </div>
-    <div id="app" style="display:none;">
-        <div class="stats">
-            <div class="stat"><div class="stat-num" id="total">0</div>Всего</div>
-            <div class="stat"><div class="stat-num" id="hot">0</div>🔥 Горячие</div>
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>🤖 AI Lead Agent</h2>
+            <p style="color:#8b949e; margin-bottom:15px; font-size:14px;">Введите ADMIN_API_KEY из Render</p>
+            <input type="password" id="key-input" placeholder="superadmin123">
+            <button class="btn" onclick="login()">🔓 Войти</button>
         </div>
-        <button id="btn-scan" onclick="scan()">🕷️ Сканировать VK</button>
-        <div id="leads"></div>
     </div>
+
+    <div id="app-screen" style="display:none;">
+        <div class="header">
+            <div class="logo">🤖 Lead Agent</div>
+            <div style="font-size:12px; color:#8b949e;">v4.0</div>
+        </div>
+        <div class="stats">
+            <div class="stat-card"><div class="stat-num" id="total">0</div><div style="font-size:12px; color:#8b949e;">Всего</div></div>
+            <div class="stat-card"><div class="stat-num" id="hot" style="color:var(--hot)">0</div><div style="font-size:12px; color:#8b949e;">🔥 Горячие</div></div>
+        </div>
+        <button class="btn" id="btn-scan" onclick="scanVK()">🕷️ Сканировать VK</button>
+        <div id="leads-list" style="margin-top:16px;">
+            <div style="text-align:center; color:#8b949e; padding:20px;">Нажмите "Сканировать" для поиска</div>
+        </div>
+    </div>
+
     <script>
+        const tg = window.Telegram.WebApp; tg.expand(); tg.ready();
         const API = window.location.origin;
-        let KEY = '';
+        let KEY = localStorage.getItem('admin_key') || '';
+        if(KEY) { document.getElementById('key-input').value = KEY; setTimeout(login, 300); }
+
         async function login() {
-            KEY = document.getElementById('key').value;
-            if(!KEY) return alert('Введите ключ!');
-            const btn = event.target;
-            btn.disabled = true; btn.textContent = '...';
+            KEY = document.getElementById('key-input').value.trim();
+            if(!KEY) return tg.showAlert('Введите ключ!');
+            const btn = event.target; btn.disabled = true; btn.textContent = '⏳...';
             try {
                 const r = await fetch(API + '/api/stats', {headers: {'x-admin-key': KEY}});
                 if(!r.ok) throw new Error('Неверный ключ или сервер спит');
                 const d = await r.json();
-                document.getElementById('login').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                document.getElementById('total').textContent = d.total;
-                document.getElementById('hot').textContent = d.hot;
-                loadLeads();
-            } catch(e) { alert('❌ ' + e.message); }
+                localStorage.setItem('admin_key', KEY);
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                updateStats(d); loadLeads();
+            } catch(e) { tg.showAlert('❌ ' + e.message); }
             finally { btn.disabled = false; btn.textContent = '🔓 Войти'; }
         }
-        async function loadLeads() {
-            const r = await fetch(API + '/api/leads', {headers: {'x-admin-key': KEY}});
-            const d = await r.json();
-            const div = document.getElementById('leads');
-            if(!d.leads || !d.leads.length) { div.innerHTML = '<p style="text-align:center;color:#8b949e;padding:20px">Нет лидов. Запустите сканирование.</p>'; return; }
-            div.innerHTML = d.leads.map(l => {
-                const cls = l.type === 'hot' ? 'hot' : l.type === 'warm' ? 'warm' : '';
-                const badge = l.type === 'hot' ? '🔥 HOT' : l.type === 'warm' ? ' WARM' : '⚪ COLD';
-                return `<div class="lead ${cls}"><span class="badge">${badge}</span><b>${l.contact || 'Нет контакта'}</b><br>${l.content}</div>`;
-            }).join('');
+
+        function updateStats(d) {
+            document.getElementById('total').textContent = d.total;
+            document.getElementById('hot').textContent = d.hot;
         }
-        async function scan() {
+
+        async function loadLeads() {
+            const div = document.getElementById('leads-list');
+            div.innerHTML = '<div style="text-align:center;padding:20px;color:#8b949e">Загрузка...</div>';
+            try {
+                const r = await fetch(API + '/api/leads', {headers: {'x-admin-key': KEY}});
+                const d = await r.json();
+                if(!d.leads.length) { div.innerHTML = '<div style="text-align:center;color:#8b949e;padding:20px">Нет лидов</div>'; return; }
+                div.innerHTML = d.leads.map(l => {
+                    const t = l.type || 'cold';
+                    const cls = t === 'hot' ? 'hot' : t === 'warm' ? 'warm' : '';
+                    const badge = t === 'hot' ? '🔥 HOT' : t === 'warm' ? ' WARM' : '⚪ COLD';
+                    return `<div class="lead ${cls}"><div class="lead-header"><span>${l.source} • ${new Date(l.created_at).toLocaleTimeString()}</span><span class="badge ${t}">${badge}</span></div><div class="lead-content">${l.content}</div><div class="lead-footer"><span>👤 ${l.contact || '—'}</span>${l.url ? `<a href="${l.url}" class="link" target="_blank">Открыть ↗</a>` : ''}</div></div>`;
+                }).join('');
+            } catch(e) { div.innerHTML = `<div style="text-align:center;color:#ff7b72;padding:20px">❌ ${e.message}</div>`; }
+        }
+
+        async function scanVK() {
             const btn = document.getElementById('btn-scan');
-            btn.disabled = true; btn.textContent = ' Сканирование (30с)...';
+            btn.disabled = true; btn.textContent = '⏳ Сканирование (30с)...';
             try {
                 const r = await fetch(API + '/api/scan/vk', {method: 'POST', headers: {'x-admin-key': KEY}});
-                if(!r.ok) throw new Error('Ошибка сканирования');
-                alert('✅ Готово! Обновляю ленту...');
+                if(!r.ok) throw new Error('Ошибка сервера');
+                const d = await r.json();
+                tg.showAlert(`✅ Готово! Найдено: ${d.found}`);
                 loadLeads();
                 const s = await fetch(API + '/api/stats', {headers: {'x-admin-key': KEY}});
-                const sd = await s.json();
-                document.getElementById('total').textContent = sd.total;
-                document.getElementById('hot').textContent = sd.hot;
-            } catch(e) { alert('❌ ' + e.message); }
+                updateStats(await s.json());
+            } catch(e) { tg.showAlert('❌ ' + e.message); }
             finally { btn.disabled = false; btn.textContent = '🕷️ Сканировать VK'; }
         }
     </script>

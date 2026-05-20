@@ -8,50 +8,50 @@ logger = logging.getLogger(__name__)
 
 class VKScanner:
     def __init__(self):
-        self.vk = vk_api.VkApi(token=os.getenv("VK_TOKEN"))
+        token = os.getenv("VK_TOKEN")
+        if not token:
+            raise ValueError("VK_TOKEN not set in environment")
+        self.vk = vk_api.VkApi(token=token)
         self.api = self.vk.get_api()
         self.ai = LogisticsAIAgent()
+        self.queries = ["ищу доставку из китая", "нужно карго", "доставка груза китай", "ищу перевозчика китай"]
 
-    def scan(self):
-        """Ищет посты по ключевым словам и анализирует их"""
-        queries = ["ищу доставку из китая", "нужно карго", "доставка груза китай", "ищу перевозчика китай"]
+    def scan(self) -> dict:
         found_count = 0
-
         with next(get_db()) as db:
-            for q in queries:
+            for q in self.queries:
                 try:
-                    # Поиск по стенам групп
-                    response = self.api.wall.search(q=q, count=20, owners_ids=[-1, -200, -12345]) 
-                    # ^ Замени IDs на реальные ID крупных групп, если хочешь точечно, или оставь общий поиск
+                    # Поиск по новостной ленте (публичные посты)
+                    response = self.api.newsfeed.search(q=q, count=15, start_time=0, end_time=0)
+                    items = response.get("items", [])
                     
-                    # Для простоты используем newsfeed.search (ищет по всей сети)
-                    news = self.api.newsfeed.search(q=q, count=20)
-                    
-                    for post in news.get('items', []):
-                        text = post.get('text', '')
-                        if len(text) < 20: continue # Пропуск коротких
-                        
-                        # Проверка на дубли в БД (упрощенная)
-                        # В реальном проекте лучше искать по ID поста
-                        
+                    for post in items:
+                        text = post.get("text", "")
+                        if len(text) < 30: continue  # Пропускаем слишком короткие
+
+                        # AI-анализ
                         result = self.ai.analyze(text, source="VK")
+                        if not result or not result.get("is_lead") or result.get("type") == "cold":
+                            continue
+
+                        # Сохранение в БД
+                        new_lead = Lead(
+                            source="VK",
+                            source_url=f"https://vk.com/wall{post['owner_id']}_{post['id']}",
+                            author=str(post.get("signer_id", post.get("from_id", ""))),
+                            contact=result.get("contact", ""),
+                            content=text[:1000],
+                            lead_type=result["type"],
+                            score=result.get("score", 50)
+                        )
+                        db.add(new_lead)
+                        found_count += 1
+                        logger.info(f"✅ Found {result['type']} lead: {result.get('summary')}")
                         
-                        if result and result.get('is_lead') and result.get('type') != 'cold':
-                            new_lead = Lead(
-                                source="VK",
-                                source_url=f"https://vk.com/wall{post['owner_id']}_{post['id']}",
-                                author=post.get('signer_id', 'Unknown'),
-                                contact=result.get('contact', ''),
-                                content=text[:1000],
-                                lead_type=result['type'],
-                                score=result.get('score', 50)
-                            )
-                            db.add(new_lead)
-                            db.commit()
-                            found_count += 1
-                            logger.info(f"✅ Найден {result['type']} лид: {result.get('summary')}")
-                            
+                except vk_api.exceptions.ApiError as e:
+                    logger.error(f"VK API Error for '{q}': {e}")
                 except Exception as e:
-                    logger.error(f"VK Search Error for '{q}': {e}")
-        
+                    logger.error(f"Scan Error for '{q}': {e}")
+                
+        db.commit()
         return {"status": "success", "found": found_count}

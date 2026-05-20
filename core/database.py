@@ -7,19 +7,19 @@ from datetime import datetime
 Base = declarative_base()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///leads.db")
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=3600)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Lead(Base):
     __tablename__ = "leads"
     id = Column(Integer, primary_key=True, index=True)
-    source = Column(String(50))  # VK, Telegram
+    source = Column(String(50), default="VK")
     source_url = Column(String(500))
-    author = Column(String(100)) # Кто написал
-    contact = Column(String(100)) # Телефон/ТГ
-    content = Column(Text) # Текст сообщения
-    lead_type = Column(String(20), default="cold") # hot, warm, cold
-    score = Column(Float, default=0.0) # Уверенность AI (0-100)
+    author = Column(String(100))
+    contact = Column(String(100))
+    content = Column(Text)
+    lead_type = Column(String(20), default="cold")  # hot, warm, cold
+    score = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class User(Base):
