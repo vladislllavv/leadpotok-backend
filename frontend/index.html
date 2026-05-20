@@ -6,16 +6,16 @@
     <title>AI Lead Agent</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --bg: var(--tg-theme-bg-color, #0d1117); --card: var(--tg-theme-secondary-bg-color, #161b22); --text: var(--tg-theme-text-color, #c9d1d9); --accent: #58a6ff; --hot: #ff7b72; --warm: #d29922; }
+        :root { --bg: #0d1117; --card: #161b22; --text: #c9d1d9; --accent: #58a6ff; --hot: #ff7b72; --warm: #d29922; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 16px; line-height: 1.5; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 16px; line-height: 1.5; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #30363d; }
         .logo { font-size: 20px; font-weight: bold; color: var(--accent); }
         .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
         .stat-card { background: var(--card); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #30363d; }
         .stat-num { font-size: 28px; font-weight: bold; color: var(--accent); }
         .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px; background: #0077ff; color: white; transition: opacity 0.2s; }
-        .btn:disabled { opacity: 0.5; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .login-box { background: var(--card); padding: 30px 20px; border-radius: 16px; text-align: center; margin-top: 40px; border: 1px solid #30363d; }
         input { width: 100%; padding: 12px; border: 1px solid #30363d; border-radius: 8px; background: var(--bg); color: var(--text); font-size: 16px; margin-bottom: 15px; outline: none; }
         input:focus { border-color: var(--accent); }
@@ -26,9 +26,10 @@
         .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
         .badge.hot { background: rgba(255,123,114,0.2); color: var(--hot); }
         .badge.warm { background: rgba(210,153,34,0.2); color: var(--warm); }
-        .lead-content { font-size: 14px; margin-bottom: 8px; }
+        .lead-content { font-size: 14px; margin-bottom: 8px; word-break: break-word; }
         .lead-footer { display: flex; justify-content: space-between; font-size: 12px; }
         .link { color: var(--accent); text-decoration: none; }
+        .error { background: rgba(255,123,114,0.1); border: 1px solid var(--hot); color: var(--hot); padding: 12px; border-radius: 8px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -37,7 +38,7 @@
             <h2>🤖 AI Lead Agent</h2>
             <p style="color:#8b949e; margin-bottom:15px; font-size:14px;">Введите ADMIN_API_KEY из Render</p>
             <input type="password" id="key-input" placeholder="superadmin123">
-            <button class="btn" onclick="login()">🔓 Войти</button>
+            <button class="btn" onclick="handleLogin()">🔓 Войти</button>
         </div>
     </div>
 
@@ -57,62 +58,183 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp; tg.expand(); tg.ready();
         const API = window.location.origin;
-        let KEY = localStorage.getItem('admin_key') || '';
-        if(KEY) { document.getElementById('key-input').value = KEY; setTimeout(login, 300); }
+        let adminKey = '';
 
-        async function login() {
-            KEY = document.getElementById('key-input').value.trim();
-            if(!KEY) return tg.showAlert('Введите ключ!');
-            const btn = event.target; btn.disabled = true; btn.textContent = '⏳...';
-            try {
-                const r = await fetch(API + '/api/stats', {headers: {'x-admin-key': KEY}});
-                if(!r.ok) throw new Error('Неверный ключ или сервер спит');
-                const d = await r.json();
-                localStorage.setItem('admin_key', KEY);
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
-                updateStats(d); loadLeads();
-            } catch(e) { tg.showAlert('❌ ' + e.message); }
-            finally { btn.disabled = false; btn.textContent = '🔓 Войти'; }
+        // Инициализация Telegram (если доступен)
+        let tg = null;
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+            }
+        } catch (e) {
+            console.log('Telegram WebApp not available');
         }
 
-        function updateStats(d) {
-            document.getElementById('total').textContent = d.total;
-            document.getElementById('hot').textContent = d.hot;
+        // Проверка сохранённого ключа
+        const savedKey = localStorage.getItem('admin_key');
+        if (savedKey) {
+            document.getElementById('key-input').value = savedKey;
+            setTimeout(handleLogin, 500);
+        }
+
+        async function handleLogin() {
+            const input = document.getElementById('key-input');
+            adminKey = input.value.trim();
+            
+            if (!adminKey) {
+                showAlert('❌ Введите ADMIN_API_KEY');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Проверка...';
+
+            try {
+                // Проверка соединения
+                const healthRes = await fetch(API + '/health');
+                if (!healthRes.ok) throw new Error('Сервер не отвечает');
+
+                // Проверка ключа
+                const statsRes = await fetch(API + '/api/stats', {
+                    headers: { 'x-admin-key': adminKey }
+                });
+
+                if (!statsRes.ok) {
+                    const err = await statsRes.json().catch(() => ({}));
+                    throw new Error(err.detail || `Ошибка ${statsRes.status}`);
+                }
+
+                const data = await statsRes.json();
+                
+                // Успешный вход
+                localStorage.setItem('admin_key', adminKey);
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                
+                updateStats(data);
+                await loadLeads();
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showAlert('❌ ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔓 Войти';
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('total').textContent = data.total || 0;
+            document.getElementById('hot').textContent = data.hot || 0;
         }
 
         async function loadLeads() {
-            const div = document.getElementById('leads-list');
-            div.innerHTML = '<div style="text-align:center;padding:20px;color:#8b949e">Загрузка...</div>';
+            const container = document.getElementById('leads-list');
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:#8b949e">⏳ Загрузка...</div>';
+
             try {
-                const r = await fetch(API + '/api/leads', {headers: {'x-admin-key': KEY}});
-                const d = await r.json();
-                if(!d.leads.length) { div.innerHTML = '<div style="text-align:center;color:#8b949e;padding:20px">Нет лидов</div>'; return; }
-                div.innerHTML = d.leads.map(l => {
-                    const t = l.type || 'cold';
-                    const cls = t === 'hot' ? 'hot' : t === 'warm' ? 'warm' : '';
-                    const badge = t === 'hot' ? '🔥 HOT' : t === 'warm' ? ' WARM' : '⚪ COLD';
-                    return `<div class="lead ${cls}"><div class="lead-header"><span>${l.source} • ${new Date(l.created_at).toLocaleTimeString()}</span><span class="badge ${t}">${badge}</span></div><div class="lead-content">${l.content}</div><div class="lead-footer"><span>👤 ${l.contact || '—'}</span>${l.url ? `<a href="${l.url}" class="link" target="_blank">Открыть ↗</a>` : ''}</div></div>`;
+                const res = await fetch(API + '/api/leads', {
+                    headers: { 'x-admin-key': adminKey }
+                });
+
+                if (!res.ok) throw new Error('Ошибка загрузки');
+
+                const data = await res.json();
+
+                if (!data.leads || data.leads.length === 0) {
+                    container.innerHTML = '<div style="text-align:center;color:#8b949e;padding:20px">📭 Лидов пока нет.<br>Нажмите "Сканировать VK"</div>';
+                    return;
+                }
+
+                container.innerHTML = data.leads.map(l => {
+                    const type = (l.type || 'cold').toLowerCase();
+                    const badgeClass = type === 'hot' ? 'hot' : type === 'warm' ? 'warm' : '';
+                    const badgeText = type === 'hot' ? '🔥 HOT' : type === 'warm' ? ' WARM' : '⚪ COLD';
+                    const time = new Date(l.created_at).toLocaleString('ru-RU', { 
+                        day: 'numeric', month:'short', hour:'2-digit', minute:'2-digit' 
+                    });
+
+                    return `
+                        <div class="lead ${type}">
+                            <div class="lead-header">
+                                <span>${l.source || 'VK'} • ${time}</span>
+                                <span class="badge ${type}">${badgeText}</span>
+                            </div>
+                            <div class="lead-content">${escapeHtml(l.content)}</div>
+                            <div class="lead-footer">
+                                <span>👤 ${escapeHtml(l.contact || 'Нет контакта')}</span>
+                                ${l.url ? `<a href="${l.url}" class="link" target="_blank">Открыть ↗</a>` : ''}
+                            </div>
+                        </div>
+                    `;
                 }).join('');
-            } catch(e) { div.innerHTML = `<div style="text-align:center;color:#ff7b72;padding:20px">❌ ${e.message}</div>`; }
+
+            } catch (e) {
+                container.innerHTML = `<div class="error">❌ Ошибка: ${e.message}<br><button class="btn" onclick="loadLeads()" style="margin-top:10px">🔄 Повторить</button></div>`;
+            }
         }
 
         async function scanVK() {
             const btn = document.getElementById('btn-scan');
-            btn.disabled = true; btn.textContent = '⏳ Сканирование (30с)...';
+            btn.disabled = true;
+            btn.textContent = '⏳ Сканирование (30-60 сек)...';
+
             try {
-                const r = await fetch(API + '/api/scan/vk', {method: 'POST', headers: {'x-admin-key': KEY}});
-                if(!r.ok) throw new Error('Ошибка сервера');
-                const d = await r.json();
-                tg.showAlert(`✅ Готово! Найдено: ${d.found}`);
-                loadLeads();
-                const s = await fetch(API + '/api/stats', {headers: {'x-admin-key': KEY}});
-                updateStats(await s.json());
-            } catch(e) { tg.showAlert('❌ ' + e.message); }
-            finally { btn.disabled = false; btn.textContent = '🕷️ Сканировать VK'; }
+                const res = await fetch(API + '/api/scan/vk', {
+                    method: 'POST',
+                    headers: { 'x-admin-key': adminKey }
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Ошибка ${res.status}`);
+                }
+
+                const data = await res.json();
+                showAlert(`✅ Сканирование завершено!\n\nНайдено лидов: ${data.found || 0}`);
+                
+                await loadLeads();
+                
+                // Обновить статистику
+                const statsRes = await fetch(API + '/api/stats', {
+                    headers: { 'x-admin-key': adminKey }
+                });
+                if (statsRes.ok) {
+                    updateStats(await statsRes.json());
+                }
+
+            } catch (e) {
+                console.error('Scan error:', e);
+                showAlert('❌ Ошибка сканирования:\n' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🕷️ Сканировать VK';
+            }
         }
+
+        function showAlert(message) {
+            if (tg && tg.showAlert) {
+                tg.showAlert(message);
+            } else {
+                alert(message);
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Глобальная обработка ошибок
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+        });
     </script>
 </body>
 </html>
