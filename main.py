@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends, Header, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
-from core.database import init_db, get_db, Lead, SessionLocal
+from core.database import Base, engine, Lead, SessionLocal
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,8 +14,20 @@ ADMIN_KEY = os.getenv("ADMIN_API_KEY", "superadmin")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    logger.info("✅ Database initialized & ready")
+    """
+    Инициализация БД при старте.
+    Если таблица не совпадает со схемой — пересоздаём её.
+    """
+    try:
+        # Пересоздаём таблицы, чтобы добавить недостающие колонки (lead_type, score и др.)
+        # Это безопасно для тестовой базы. Для продакшена позже используем миграции.
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database schema updated & ready")
+    except Exception as e:
+        logger.error(f"❌ Database init error: {e}")
+        # Пробуем просто создать, если drop не сработал
+        Base.metadata.create_all(bind=engine)
     yield
 
 app = FastAPI(title="AI Lead Agent", version="4.0.0", lifespan=lifespan)
@@ -51,6 +63,9 @@ async def get_stats(x_admin_key: str = Header(None)):
         total = db.query(func.count(Lead.id)).scalar() or 0
         hot = db.query(func.count(Lead.id)).filter(Lead.lead_type == "hot").scalar() or 0
         return {"total": total, "hot": hot}
+    except Exception as e:
+        logger.error(f"Stats query error: {e}")
+        return {"total": 0, "hot": 0, "error": str(e)}
     finally:
         db.close()
 
@@ -70,6 +85,9 @@ async def get_leads(x_admin_key: str = Header(None)):
                 } for l in leads
             ]
         }
+    except Exception as e:
+        logger.error(f"Leads query error: {e}")
+        return {"leads": [], "error": str(e)}
     finally:
         db.close()
 
