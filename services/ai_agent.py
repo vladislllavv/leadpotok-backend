@@ -12,30 +12,31 @@ class LogisticsAIAgent:
         self.client = Groq(api_key=api_key) if api_key else None
         self.model = "llama-3.3-70b-versatile"
 
-    def analyze(self, text: str, source: str = "VK") -> Optional[Dict]:
+    def analyze(self, text: str, source: str = "Telegram") -> Optional[Dict]:
         if not self.client:
-            logger.warning("GROQ_API_KEY not set. Skipping AI analysis.")
-            return {"is_lead": True, "type": "warm", "score": 50, "contact": None, "summary": "AI disabled"}
+            logger.warning("GROQ_API_KEY not set")
+            return {"is_lead": False, "score": 0, "type": "cold"}
 
         prompt = f"""
-Ты AI-брокер в логистике. Проанализируй сообщение из {source}.
-Задача: Найти людей, которым нужна доставка груза ИЗ КИТАЯ.
+Ты AI-агент по поиску клиентов в логистике (Китай → Россия).
 
-Текст:
-"{text[:1200]}"
+Проанализируй сообщение из {source}:
+"{text[:1500]}"
 
-Критерии:
-- HOT: Срочный запрос, конкретный объем, бюджет ("нужно 5 тонн срочно", "сколько стоит доставка 20фут").
-- WARM: Планирует, ищет партнеров, общий вопрос ("кто возит из китая?", "ищу карго надежно").
-- COLD: Спам, реклама, продажа услуг ("мы доставляем"), или не про логистику.
+Оцени по шкале 1-100:
+- 90-100: СРОЧНО! Конкретный запрос, объем, бюджет, сроки ("нужно доставить 10 тонн срочно", "ищу карго на 500к")
+- 70-89: Горячий лид! Есть запрос, но нет деталей ("нужна доставка из китая", "ищу поставщика")
+- 40-69: Тёплый! Интересуется темой ("сколько стоит доставка", "как заказать из китая")
+- 1-39: Холодный/Спам/Не по теме
 
-Верни СТРОГО JSON (без markdown и пояснений):
+Верни СТРОГО JSON:
 {{
   "is_lead": true/false,
-  "type": "hot" | "warm" | "cold",
   "score": 0-100,
-  "contact": "найденный телефон или @username или null",
-  "summary": "суть в 1 предложении"
+  "type": "hot" (80+) | "warm" (50-79) | "cold" (<50),
+  "contact": "найденный телефон/@username/null",
+  "summary": "суть в 1 предложении",
+  "urgency": "высокая/средняя/низкая"
 }}
 """
         try:
@@ -45,7 +46,12 @@ class LogisticsAIAgent:
                 temperature=0.1,
                 response_format={"type": "json_object"}
             )
-            return json.loads(response.choices[0].message.content)
+            result = json.loads(response.choices[0].message.content)
+            
+            # Определи is_hot
+            result["is_hot"] = result.get("score", 0) >= 80
+            
+            return result
         except Exception as e:
-            logger.error(f"AI Analysis Error: {e}")
+            logger.error(f"AI Error: {e}")
             return None
