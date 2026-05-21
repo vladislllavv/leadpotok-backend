@@ -1,11 +1,11 @@
 import os
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from telethon import TelegramClient
 from telethon.tl.types import Message
 from services.ai_agent import LogisticsAIAgent
-from core.database import get_db, Lead, User
+from core.database import get_db, Lead
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,11 @@ class TelegramScanner:
         api_id = os.getenv("TELEGRAM_API_ID")
         api_hash = os.getenv("TELEGRAM_API_HASH")
         session_name = os.getenv("TELEGRAM_SESSION", "leadpotok")
+        
+        logger.info(f"🔑 Initializing Telegram scanner...")
+        logger.info(f"API ID: {api_id}")
+        logger.info(f"API Hash: {api_hash[:10] if api_hash else None}...")
+        logger.info(f"Session: {session_name}")
         
         if not api_id or not api_hash:
             raise ValueError("TELEGRAM credentials not set")
@@ -44,35 +49,40 @@ class TelegramScanner:
     async def scan(self) -> dict:
         found_count = 0
         hot_count = 0
-        await self.client.start()
+        errors = 0
         
-        with next(get_db()) as db:
-            # Поиск по каналам
-            for channel in self.channels:
-                try:
-                    entity = await self.client.get_entity(channel)
-                    async for message in self.client.iter_messages(entity, limit=50):
-                        if await self._process_message(db, message):
-                            found_count += 1
-                            if message.text and len(message.text) > 100:
-                                result = self.ai.analyze(message.text, "Telegram")
+        try:
+            await self.client.start()
+            logger.info("✅ Telegram client started")
+            
+            with next(get_db()) as db:
+                # Поиск по каналам
+                for channel in self.channels[:5]:  # Первые 5 для теста
+                    try:
+                        logger.info(f"🔍 Scanning channel: {channel}")
+                        entity = await self.client.get_entity(channel)
+                        logger.info(f"✓ Found: {entity.title}")
+                        
+                        async for message in self.client.iter_messages(entity, limit=20):
+                            if await self._process_message(db, message):
+                                found_count += 1
+                                result = self.ai.analyze(message.text or "", "Telegram")
                                 if result and result.get("is_hot"):
                                     hot_count += 1
-                except Exception as e:
-                    logger.debug(f"Channel {channel} error: {e}")
-            
-            # Глобальный поиск
-            for query in self.queries:
-                try:
-                    async for message in self.client.iter_messages(None, search=query, limit=30):
-                        if await self._process_message(db, message):
-                            found_count += 1
-                except:
-                    pass
+                                    
+                    except Exception as e:
+                        logger.warning(f"❌ Channel {channel} error: {e}")
+                        errors += 1
+                
+                logger.info(f"✅ Scan complete: {found_count} leads, {hot_count} hot")
+                
+        except Exception as e:
+            logger.error(f"❌ Scan error: {e}")
+            raise
+        finally:
+            await self.client.disconnect()
         
-        await self.client.disconnect()
-        logger.info(f"✅ Scan: {found_count} leads, {hot_count} hot")
-        return {"status": "success", "found": found_count, "hot": hot_count}
+        return {"status": "success", "found": found_count, "hot": hot_count, "errors": errors}
 
     async def _process_message(self, db, message: Message) -> bool:
         text = message.text
@@ -99,28 +109,5 @@ class TelegramScanner:
         db.add(lead)
         db.commit()
         
-        # Пуш-уведомление для горячих
-        if lead.is_hot:
-            await self._notify_hot_lead(db, lead)
-        
+        logger.info(f"✅ New lead: score={lead.score}, type={lead.lead_type}")
         return True
-
-    async def _notify_hot_lead(self, db, lead: Lead):
-        """Отправка пуш-уведомления всем активным пользователям"""
-        users = db.query(User).filter(
-            User.is_premium == True,
-            User.subscription_end > datetime.utcnow()
-        ).all()
-        
-        for user in users:
-            try:
-                await self.client.send_message(
-                    int(user.telegram_id),
-                    f"🔥 ГОРЯЧИЙ ЛИД!\n\n"
-                    f"Score: {lead.score}/100\n"
-                    f"Контакт: {lead.contact or 'Не указан'}\n"
-                    f"Суть: {lead.content[:150]}..."
-                )
-                lead.notification_sent = True
-            except Exception as e:
-                logger.error(f"Notify error: {e}")
