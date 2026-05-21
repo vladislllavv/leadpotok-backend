@@ -15,7 +15,7 @@ class LogisticsAIAgent:
     def analyze(self, text: str, source: str = "Telegram") -> Optional[Dict]:
         if not self.client:
             logger.warning("GROQ_API_KEY not set")
-            return {"is_lead": False, "score": 0, "type": "cold"}
+            return {"is_lead": False, "score": 0, "type": "cold", "is_hot": False}
 
         prompt = f"""
 Ты AI-агент по поиску клиентов в логистике (Китай → Россия).
@@ -24,19 +24,19 @@ class LogisticsAIAgent:
 "{text[:1500]}"
 
 Оцени по шкале 1-100:
-- 90-100: СРОЧНО! Конкретный запрос, объем, бюджет, сроки ("нужно доставить 10 тонн срочно", "ищу карго на 500к")
-- 70-89: Горячий лид! Есть запрос, но нет деталей ("нужна доставка из китая", "ищу поставщика")
-- 40-69: Тёплый! Интересуется темой ("сколько стоит доставка", "как заказать из китая")
-- 1-39: Холодный/Спам/Не по теме
+- 90-100: СРОЧНО! Конкретный запрос, объем, бюджет
+- 70-89: Горячий лид! Есть запрос
+- 40-69: Тёплый! Интересуется темой
+- 1-39: Холодный/Спам
 
 Верни СТРОГО JSON:
 {{
   "is_lead": true/false,
   "score": 0-100,
-  "type": "hot" (80+) | "warm" (50-79) | "cold" (<50),
-  "contact": "найденный телефон/@username/null",
+  "type": "hot" | "warm" | "cold",
+  "contact": "найденный контакт или null",
   "summary": "суть в 1 предложении",
-  "urgency": "высокая/средняя/низкая"
+  "is_hot": true/false
 }}
 """
         try:
@@ -47,11 +47,8 @@ class LogisticsAIAgent:
                 response_format={"type": "json_object"}
             )
             result = json.loads(response.choices[0].message.content)
-            
-            # Определи is_hot
             result["is_hot"] = result.get("score", 0) >= 80
-            
             return result
         except Exception as e:
             logger.error(f"AI Error: {e}")
-            return None
+            return {"is_lead": False, "score": 0, "type": "cold", "is_hot": False}

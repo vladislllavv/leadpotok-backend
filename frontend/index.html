@@ -13,9 +13,6 @@
             --accent: #58a6ff;
             --hot: #ff7b72;
             --warm: #d29922;
-            --success: #3fb950;
-            --danger: #f85149;
-            --warning: #d29922;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -27,10 +24,6 @@
             margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #30363d;
         }
         .logo { font-size: 20px; font-weight: bold; color: var(--accent); }
-        .badge-premium {
-            background: linear-gradient(135deg, #f1c40f, #f39c12);
-            color: #000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;
-        }
         .stats {
             display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px;
         }
@@ -42,13 +35,7 @@
         .stat-label { font-size: 11px; color: #8b949e; margin-top: 4px; }
         .user-info {
             background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 16px;
-            display: flex; justify-content: space-between; align-items: center;
         }
-        .leads-limit {
-            font-size: 12px; color: #8b949e;
-        }
-        .leads-limit.warning { color: var(--warning); }
-        .leads-limit.danger { color: var(--danger); }
         .btn {
             width: 100%; padding: 14px; border: none; border-radius: 12px;
             font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px;
@@ -56,7 +43,6 @@
         }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-scan { background: #24a1de; }
-        .btn-upgrade { background: linear-gradient(135deg, #f1c40f, #f39c12); color: #000; }
         .lead {
             background: var(--card); padding: 14px; border-radius: 12px; margin-bottom: 12px;
             border-left: 4px solid #8b949e;
@@ -70,7 +56,6 @@
             font-weight: bold; padding: 2px 8px; border-radius: 6px; font-size: 12px;
         }
         .score.hot { background: rgba(255,123,114,0.2); color: var(--hot); }
-        .score.warm { background: rgba(210,153,34,0.2); color: var(--warm); }
         .lead-content { font-size: 14px; margin-bottom: 8px; }
         .lead-footer {
             display: flex; justify-content: space-between; font-size: 12px; color: #8b949e;
@@ -81,17 +66,11 @@
 <body>
     <div class="header">
         <div class="logo">🤖 AI Lead Agent</div>
-        <div id="premium-badge" style="display:none;"><span class="badge-premium">PREMIUM</span></div>
     </div>
 
     <div class="user-info">
-        <div>
-            <div style="font-weight:600" id="user-name">User</div>
-            <div class="leads-limit" id="leads-limit">0/5 лидов этой недели</div>
-        </div>
-        <div id="upgrade-btn" style="display:none;">
-            <button class="btn btn-upgrade" onclick="upgrade()" style="width:auto;padding:8px 16px;font-size:14px;margin:0">💎 Premium</button>
-        </div>
+        <div style="font-weight:600" id="user-name">User</div>
+        <div style="font-size:12px;color:#8b949e" id="leads-limit">0/5 лидов</div>
     </div>
 
     <div class="stats">
@@ -108,7 +87,7 @@
     <button class="btn btn-scan" id="btn-scan" onclick="scan()">🔍 Найти лиды</button>
 
     <div id="leads-list">
-        <div class="empty">Нажмите "Найти лиды" для поиска</div>
+        <div class="empty">Нажмите "Найти лиды"</div>
     </div>
 
     <script>
@@ -117,54 +96,61 @@
         tg.ready();
 
         const API = window.location.origin;
+        let ADMIN_KEY = localStorage.getItem('admin_key') || '';
         let USER_ID = null;
         let IS_PREMIUM = false;
         let LEADS_RECEIVED = 0;
-        const ADMIN_KEY = localStorage.getItem('admin_key') || 'superadmin';
 
-        // Авторизация пользователя
+        // Запрос ключа если не сохранён
+        if (!ADMIN_KEY) {
+            const inputKey = prompt('🔑 Введите ADMIN_API_KEY из Render:');
+            if (inputKey) {
+                ADMIN_KEY = inputKey;
+                localStorage.setItem('admin_key', ADMIN_KEY);
+            } else {
+                alert('Без ключа доступ запрещён!');
+                tg.close();
+            }
+        }
+
         async function authUser() {
             const user = tg.initDataUnsafe.user;
             if (!user) return;
 
-            const res = await fetch(`${API}/api/auth`, {
-                method: 'POST',
-                headers: {
-                    'telegram_id': String(user.id),
-                    'username': user.username || '',
-                    'first_name': user.first_name || ''
-                }
-            });
+            try {
+                const res = await fetch(`${API}/api/auth`, {
+                    method: 'POST',
+                    headers: {
+                        'telegram_id': String(user.id),
+                        'username': user.username || '',
+                        'first_name': user.first_name || ''
+                    }
+                });
 
-            const data = await res.json();
-            USER_ID = data.user_id;
-            IS_PREMIUM = data.is_premium;
-            LEADS_RECEIVED = data.leads_received;
+                const data = await res.json();
+                USER_ID = data.user_id;
+                IS_PREMIUM = data.is_premium;
+                LEADS_RECEIVED = data.leads_received;
 
-            document.getElementById('user-name').textContent = user.first_name || 'User';
-            document.getElementById('leads-limit').textContent = 
-                `${LEADS_RECEIVED}/5 лидов ${IS_PREMIUM ? '(Premium)' : ''}`;
-            
-            if (IS_PREMIUM) {
-                document.getElementById('premium-badge').style.display = 'block';
-                document.getElementById('leads-limit').classList.remove('warning', 'danger');
-            } else {
-                if (LEADS_RECEIVED >= 5) {
-                    document.getElementById('leads-limit').classList.add('danger');
-                    document.getElementById('upgrade-btn').style.display = 'block';
+                document.getElementById('user-name').textContent = user.first_name || 'User';
+                document.getElementById('leads-limit').textContent = 
+                    `${LEADS_RECEIVED}/5 лидов ${IS_PREMIUM ? '(Premium)' : ''}`;
+                
+                if (!IS_PREMIUM && LEADS_RECEIVED >= 5) {
                     document.getElementById('btn-scan').disabled = true;
-                } else if (LEADS_RECEIVED >= 3) {
-                    document.getElementById('leads-limit').classList.add('warning');
+                    document.getElementById('leads-limit').textContent += ' (лимит превышен)';
                 }
-            }
 
-            loadLeads();
-            updateStats();
+                loadLeads();
+                updateStats();
+            } catch (e) {
+                console.error('Auth error:', e);
+            }
         }
 
         async function scan() {
             if (!IS_PREMIUM && LEADS_RECEIVED >= 5) {
-                tg.showAlert('❌ Превышен лимит 5 лидов/неделю. Оформите Premium!');
+                tg.showAlert('❌ Превышен лимит 5 лидов/неделю');
                 return;
             }
 
@@ -177,12 +163,19 @@
                     method: 'POST',
                     headers: { 'x-admin-key': ADMIN_KEY }
                 });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || `Ошибка ${res.status}`);
+                }
+                
                 const data = await res.json();
                 tg.showAlert(`✅ Найдено: ${data.found}\nГорячих: ${data.hot || 0}`);
                 loadLeads();
                 updateStats();
             } catch (e) {
                 tg.showAlert('❌ Ошибка: ' + e.message);
+                console.error('Scan error:', e);
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🔍 Найти лиды';
@@ -190,46 +183,53 @@
         }
 
         async function loadLeads() {
-            const res = await fetch(`${API}/api/leads`, {
-                headers: { 
-                    'x-admin-key': ADMIN_KEY,
-                    'user_id': USER_ID || ''
+            try {
+                const res = await fetch(`${API}/api/leads`, {
+                    headers: { 
+                        'x-admin-key': ADMIN_KEY,
+                        'user_id': USER_ID || ''
+                    }
+                });
+                
+                if (!res.ok) throw new Error(`Ошибка ${res.status}`);
+                
+                const data = await res.json();
+                const list = document.getElementById('leads-list');
+
+                if (!data.leads.length) {
+                    list.innerHTML = '<div class="empty">Нет лидов</div>';
+                    return;
                 }
-            });
-            const data = await res.json();
-            const list = document.getElementById('leads-list');
 
-            if (!data.leads.length) {
-                list.innerHTML = '<div class="empty">Нет лидов</div>';
-                return;
+                list.innerHTML = data.leads.map(l => `
+                    <div class="lead ${l.is_hot ? 'hot' : l.type === 'warm' ? 'warm' : ''}">
+                        <div class="lead-header">
+                            <span>${l.source}</span>
+                            <span class="score ${l.score >= 80 ? 'hot' : ''}">${l.score}/100</span>
+                        </div>
+                        <div class="lead-content">${l.content}</div>
+                        <div class="lead-footer">
+                            <span>👤 ${l.contact || 'Нет контакта'}</span>
+                            ${l.is_hot ? '<span>🔥 HOT</span>' : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Load leads error:', e);
             }
-
-            list.innerHTML = data.leads.map(l => `
-                <div class="lead ${l.is_hot ? 'hot' : l.type === 'warm' ? 'warm' : ''}">
-                    <div class="lead-header">
-                        <span>${l.source} • ${new Date(l.created_at).toLocaleDateString()}</span>
-                        <span class="score ${l.score >= 80 ? 'hot' : l.score >= 50 ? 'warm' : ''}">${l.score}/100</span>
-                    </div>
-                    <div class="lead-content">${l.content}</div>
-                    <div class="lead-footer">
-                        <span>👤 ${l.contact || 'Нет контакта'}</span>
-                        ${l.is_hot ? '<span>🔥 HOT</span>' : ''}
-                    </div>
-                </div>
-            `).join('');
         }
 
         async function updateStats() {
-            const res = await fetch(`${API}/api/stats`, {
-                headers: { 'x-admin-key': ADMIN_KEY }
-            });
-            const data = await res.json();
-            document.getElementById('total-leads').textContent = data.total;
-            document.getElementById('hot-leads').textContent = data.hot;
-        }
-
-        function upgrade() {
-            tg.showAlert('💎 Premium:\n- Безлимитные лиды\n- Мгновенные пуш-уведомления\n- Приоритетная поддержка\n\nЦена: 999₽/месяц\n\n(В разработке)');
+            try {
+                const res = await fetch(`${API}/api/stats`, {
+                    headers: { 'x-admin-key': ADMIN_KEY }
+                });
+                const data = await res.json();
+                document.getElementById('total-leads').textContent = data.total;
+                document.getElementById('hot-leads').textContent = data.hot;
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
         }
 
         authUser();

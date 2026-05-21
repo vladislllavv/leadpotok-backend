@@ -2,7 +2,7 @@ import os
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
-from datetime import datetime, timedelta
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -33,8 +33,8 @@ class Lead(Base):
     contact = Column(String(100))
     content = Column(Text)
     lead_type = Column(String(20), default="cold")
-    score = Column(Integer, default=0)  # 1-100
-    is_hot = Column(Boolean, default=False)  # score >= 80
+    score = Column(Integer, default=0)
+    is_hot = Column(Boolean, default=False)
     notification_sent = Column(Boolean, default=False)
     assigned_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -45,7 +45,7 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    plan = Column(String(20))  # free, weekly, monthly, yearly
+    plan = Column(String(20))
     start_date = Column(DateTime, default=datetime.utcnow)
     end_date = Column(DateTime)
     is_active = Column(Boolean, default=True)
