@@ -32,7 +32,14 @@ class TelegramScanner:
             "срочно нужен перевозчик", "доставка сборного груза", "logistics china",
             "доставка из guangzhou", "помощь с таможней", "груз из shenzhen",
             "доставка FCL LCL", "таможенное оформление", "нужна доставка из Китая",
-            "грузоперевозки из китая", "товар из китая", "экспресс доставка из китая"
+            "грузоперевозки из китая", "товар из китая", "экспресс доставка из китая",
+            "импорт из китая", "нужен экспедитор", "доставка с aliexpress",
+            "доставка с 1688", "оптовый груз из китая", "таможня из китая",
+            "контейнер из китая", "морской фрахт из китая", "авиа доставка из китая",
+            "логистика из китая", "перевозка из китая", "ship from china",
+            "china freight", "china logistics", "international cargo",
+            "sea freight from china", "air freight china", "customs clearance",
+            "cn to ru delivery", "china import service", "china cargo service"
         ]
         
         self.channels = [
@@ -50,7 +57,11 @@ class TelegramScanner:
             "china_carrier", "china_freight", "cargoru",
             "china_trade_info", "china_delivery", "china_port",
             "cargo_world", "shipping_china", "china_ecommerce",
-            "globallogistics", "asia_freight", "china_terminal"
+            "globallogistics", "asia_freight", "china_terminal",
+            "china_shipping_news", "china_import_export", "shipfromchina",
+            "china_business_news", "rus_china_cargo", "china_logistic_group",
+            "china_supply_chain", "china_express_delivery", "asia_freight_news",
+            "china_trading", "cargo_news", "cargo_market"
         ]
 
     async def scan(self) -> dict:
