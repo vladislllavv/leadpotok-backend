@@ -3,7 +3,7 @@ import vk_api
 import logging
 import time
 from services.ai_agent import LogisticsAIAgent
-from core.database import get_db, Lead
+from core.database import SessionLocal, Lead
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,8 @@ class VKScanner:
         found_count = 0
         processed_posts = set()  # Чтобы не дублировать
         
-        with next(get_db()) as db:
+        db = SessionLocal()
+        try:
             # 1. Поиск по ВСЕЙ ленте VK (все группы и страницы)
             logger.info("🔍 Searching newsfeed across all VK...")
             for q in self.queries:
@@ -123,9 +124,11 @@ class VKScanner:
                 except Exception as e:
                     logger.error(f"Group wall error for {group}: {e}")
             
-        db.commit()
-        logger.info(f"✅ Scan complete. Found {found_count} leads.")
-        return {"status": "success", "found": found_count}
+            db.commit()
+            logger.info(f"✅ Scan complete. Found {found_count} leads.")
+            return {"status": "success", "found": found_count}
+        finally:
+            db.close()
 
     def _process_post(self, db, post) -> bool:
         """Обрабатывает пост: анализирует текст и сохраняет если это лид"""

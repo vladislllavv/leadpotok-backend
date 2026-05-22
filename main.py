@@ -40,7 +40,7 @@ async def root():
         return HTMLResponse(content=f"<h1>Error: {e}</h1>")
 
 @app.post("/api/auth")
-async def auth_user(telegram_id: str = Header(), username: str = Header(None), first_name: str = Header(None)):
+async def auth_user(telegram_id: str = Header(..., alias="telegram-id"), username: str = Header(None), first_name: str = Header(None)):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.telegram_id == telegram_id).first()
