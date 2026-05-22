@@ -91,13 +91,23 @@ async def scan_telegram(x_admin_key: str = Header(None)):
     verify_admin(x_admin_key)
     try:
         from scanners.telegram_scanner import TelegramScanner
-        import asyncio
         scanner = TelegramScanner()
-        result = asyncio.run(scanner.scan())
+        result = await scanner.scan()
         return result
     except Exception as e:
         logger.error(f"Scan error: {e}")
         raise HTTPException(500, detail=str(e))
+
+@app.get("/api/scan/telegram/channels")
+async def scan_telegram_channels(x_admin_key: str = Header(None)):
+    verify_admin(x_admin_key)
+    from scanners.telegram_scanner import TelegramScanner
+    scanner = TelegramScanner()
+    return {
+        "channels": scanner.channels,
+        "queries": scanner.queries,
+        "notify_enabled": bool(scanner.bot_token and scanner.notify_chat_id)
+    }
 
 @app.get("/api/stats")
 async def get_stats(x_admin_key: str = Header(None)):
