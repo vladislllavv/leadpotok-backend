@@ -1,5 +1,4 @@
 import os
-import asyncio
 import logging
 from telethon import TelegramClient
 from telethon.tl.types import Message
@@ -21,6 +20,9 @@ class TelegramScanner:
         self.ai = LogisticsAIAgent()
         self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.notify_chat_id = os.getenv("TELEGRAM_NOTIFY_CHAT_ID")
+        self.hot_score_threshold = int(os.getenv("HOT_LEAD_SCORE_THRESHOLD", 80))
+        self.channel_search_limit = int(os.getenv("TELEGRAM_CHANNEL_LIMIT", 30))
+        self.query_search_limit = int(os.getenv("TELEGRAM_SEARCH_LIMIT", 20))
         
         self.queries = [
             "ищу доставку из китая", "нужно карго", "доставка груза китай",
@@ -44,7 +46,11 @@ class TelegramScanner:
             "china_cargo", "logistics_news", "cargo_china",
             "china_express", "china_import", "china_export",
             "china_trade", "china_business", "asia_shipping",
-            "cargo_for_business", "freight_china", "china_supply"
+            "cargo_for_business", "freight_china", "china_supply",
+            "china_carrier", "china_freight", "cargoru",
+            "china_trade_info", "china_delivery", "china_port",
+            "cargo_world", "shipping_china", "china_ecommerce",
+            "globallogistics", "asia_freight", "china_terminal"
         ]
 
     async def scan(self) -> dict:
@@ -59,7 +65,7 @@ class TelegramScanner:
                     logger.info(f"Scanning: {channel}")
                     entity = await self.client.get_entity(channel)
                     
-                    async for message in self.client.iter_messages(entity, limit=30):
+                    async for message in self.client.iter_messages(entity, limit=self.channel_search_limit):
                         lead_hot = await self._process_message(db, message)
                         if lead_hot is not None:
                             found_count += 1
@@ -72,7 +78,7 @@ class TelegramScanner:
             
             for query in self.queries:
                 try:
-                    async for message in self.client.iter_messages(None, search=query, limit=20):
+                    async for message in self.client.iter_messages(None, search=query, limit=self.query_search_limit):
                         lead_hot = await self._process_message(db, message)
                         if lead_hot is not None:
                             found_count += 1

@@ -106,7 +106,10 @@ async def scan_telegram_channels(x_admin_key: str = Header(None)):
     return {
         "channels": scanner.channels,
         "queries": scanner.queries,
-        "notify_enabled": bool(scanner.bot_token and scanner.notify_chat_id)
+        "notify_enabled": bool(scanner.bot_token and scanner.notify_chat_id),
+        "hot_score_threshold": scanner.hot_score_threshold,
+        "channel_search_limit": scanner.channel_search_limit,
+        "query_search_limit": scanner.query_search_limit
     }
 
 @app.get("/api/stats")
