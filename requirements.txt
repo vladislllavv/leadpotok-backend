@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+httpx
+aiosqlite
+python-dotenv
+telethon
+groq
+customtkinter
+py2app
+vk-api
+beautifulsoup4
+requests
+aiohttp
