@@ -44,6 +44,39 @@ class LogisticsAIAgent:
   "is_hot": true/false
 }}
 """
+        return self._call_ai(prompt)
+
+    def analyze_job_post(self, text: str, source: str = "JobBoard") -> Optional[Dict]:
+        if not self.client:
+            return {"is_lead": False, "score": 0, "type": "cold", "contact": None, "summary": "", "is_hot": False}
+
+        prompt = f"""
+Ты AI-агент по поиску компаний, которым нужны услуги логистики из Китая.
+
+Проанализируй объявление о вакансии из {source}:
+"{text[:1500]}"
+
+Если компания ищет специалиста по ВЭД, закупщика в Китае или логиста — значит, компания активно работает с Китаем и им может понадобиться новый или лучший перевозчик/карго. Это потенциальный B2B лид.
+
+Оцени по шкале 1-100:
+- 90-100: Очень высокая вероятность потребности в логистике (активный найм нескольких людей, расширение).
+- 70-89: Высокая вероятность (стандартный поиск ВЭД специалиста).
+- 40-69: Средняя вероятность.
+- 1-39: Низкая вероятность/Не релевантно.
+
+Верни СТРОГО JSON:
+{{
+  "is_lead": true/false,
+  "score": 0-100,
+  "type": "hot" | "warm" | "cold",
+  "contact": "извлеки название компании если есть",
+  "summary": "почему это лид",
+  "is_hot": true/false
+}}
+"""
+        return self._call_ai(prompt)
+
+    def _call_ai(self, prompt: str) -> Optional[Dict]:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
