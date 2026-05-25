@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+httpx
+aiosqlite
+python-dotenv
+telethon
+groq
+customtkinter
+py2app
